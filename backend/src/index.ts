@@ -64,16 +64,35 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/sources', sourceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Serve static files from frontend build
-app.use(express.static(path.join(__dirname, '../../frontend/build')));
+// Serve static files from frontend build (if it exists)
+const frontendBuildPath = path.join(__dirname, '../../frontend/build');
+const frontendIndexPath = path.join(frontendBuildPath, 'index.html');
+
+// Check if frontend build exists
+if (require('fs').existsSync(frontendIndexPath)) {
+  app.use(express.static(frontendBuildPath));
+  
+  // Catch all handler: send back React's index.html file for client-side routing
+  app.get('*', (req, res) => {
+    res.sendFile(frontendIndexPath);
+  });
+} else {
+  // Fallback: serve a simple API-only response
+  app.get('*', (req, res) => {
+    res.json({
+      message: 'Presentation Generator API is running!',
+      status: 'success',
+      frontend: 'Not available - API only mode',
+      endpoints: {
+        health: '/health',
+        api: '/api/*'
+      }
+    });
+  });
+}
 
 // Error handling middleware
 app.use(errorHandler);
-
-// Catch all handler: send back React's index.html file for client-side routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../../frontend/build/index.html'));
-});
 
 // Start server
 const startServer = async () => {
