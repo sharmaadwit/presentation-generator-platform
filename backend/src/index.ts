@@ -5,6 +5,7 @@ import morgan from 'morgan';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
 
 import { errorHandler } from './middleware/errorHandler';
 import { authRoutes } from './routes/auth';
@@ -63,15 +64,15 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/sources', sourceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
+// Serve static files from frontend build
+app.use(express.static(path.join(__dirname, '../../frontend/build')));
+
 // Error handling middleware
 app.use(errorHandler);
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({ 
-    error: 'Route not found',
-    path: req.originalUrl 
-  });
+// Catch all handler: send back React's index.html file for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/build/index.html'));
 });
 
 // Start server

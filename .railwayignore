@@ -1,0 +1,16 @@
+# Ignore root package.json to prevent Railway from detecting this as a Node.js project
+package.json
+package-lock.json
+node_modules/
+.git/
+.gitignore
+README.md
+*.md
+.env
+.env.local
+.env.example
+railway.env.example
+setup-railway.sh
+docker-compose.yml
+railway-compose.yml
+railway.json
