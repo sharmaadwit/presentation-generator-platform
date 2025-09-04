@@ -1,12 +1,4 @@
 # Multi-stage build for Railway deployment
-FROM node:18-alpine AS base
-
-# Install dependencies
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Build frontend
 FROM node:18-alpine AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
