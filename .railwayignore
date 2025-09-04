@@ -1,8 +1,6 @@
 # Ignore root package.json to prevent Railway from detecting this as a Node.js project
 package.json
-# Don't ignore package-lock.json files in subdirectories
-!frontend/package-lock.json
-!backend/package-lock.json
+package-lock.json
 node_modules/
 .git/
 .gitignore
