@@ -6,12 +6,18 @@ WORKDIR /app
 RUN ls -la
 RUN ls -la frontend/ || echo "frontend directory not found"
 
-# Copy frontend directory
-COPY frontend/ ./frontend/
-RUN ls -la frontend/
-RUN cat frontend/package.json || echo "package.json not found"
+# Copy frontend directory contents directly
+COPY frontend/package*.json ./
+COPY frontend/src ./src
+COPY frontend/public ./public
+COPY frontend/tsconfig.json ./
+COPY frontend/tailwind.config.js ./
+COPY frontend/postcss.config.js ./
 
-WORKDIR /app/frontend
+# Debug: Check if files were copied
+RUN ls -la
+RUN cat package.json || echo "package.json not found"
+
 RUN npm install
 RUN npm run build
 
@@ -29,7 +35,7 @@ FROM node:18-alpine AS production
 WORKDIR /app
 
 # Copy built applications
-COPY --from=frontend-build /app/frontend/build ./frontend/build
+COPY --from=frontend-build /app/build ./frontend/build
 COPY --from=backend-build /app/backend/dist ./backend/dist
 COPY --from=backend-build /app/backend/node_modules ./backend/node_modules
 COPY --from=backend-build /app/backend/package*.json ./backend/
