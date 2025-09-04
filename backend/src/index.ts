@@ -65,18 +65,25 @@ app.use('/api/sources', sourceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Serve static files from frontend build (if it exists)
-const frontendBuildPath = path.join(__dirname, '../../frontend/build');
+const frontendBuildPath = path.join(__dirname, '../frontend/build');
 const frontendIndexPath = path.join(frontendBuildPath, 'index.html');
 
 // Check if frontend build exists
+console.log('Frontend build path:', frontendBuildPath);
+console.log('Frontend index path:', frontendIndexPath);
+console.log('Frontend build exists:', require('fs').existsSync(frontendIndexPath));
+
 if (require('fs').existsSync(frontendIndexPath)) {
+  console.log('Serving frontend from:', frontendBuildPath);
   app.use(express.static(frontendBuildPath));
   
   // Catch all handler: send back React's index.html file for client-side routing
   app.get('*', (req, res) => {
+    console.log('Serving frontend for route:', req.path);
     res.sendFile(frontendIndexPath);
   });
 } else {
+  console.log('Frontend build not found, serving API-only mode');
   // Fallback: serve a simple API-only response
   app.get('*', (req, res) => {
     res.json({

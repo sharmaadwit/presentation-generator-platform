@@ -2,30 +2,29 @@
 FROM node:18-alpine AS frontend-build
 WORKDIR /app
 
-# Debug: List what's in the build context
-RUN ls -la
-RUN ls -la frontend/ || echo "frontend directory not found"
+# Copy frontend files
+COPY frontend/ ./frontend/
 
-# Try copying everything first to see what's available
-COPY . ./
-RUN ls -la
-RUN ls -la frontend/ || echo "frontend directory not found after COPY ."
+# Install frontend dependencies and build
+WORKDIR /app/frontend
+RUN npm ci
 
-# Check if frontend directory has files
-RUN if [ -f "frontend/package.json" ]; then \
-      echo "Frontend directory found with package.json"; \
-      cd frontend && npm install && npm run build; \
-    else \
-      echo "Frontend directory not found, skipping frontend build"; \
-      mkdir -p frontend/build; \
-    fi
+# Set environment variables for frontend build
+ENV REACT_APP_API_URL=/api
+ENV REACT_APP_AI_SERVICE_URL=/ai-service
+
+RUN npm run build
+
+# Verify build was successful
+RUN ls -la build/ || echo "Build directory not found"
+RUN if [ -f "build/index.html" ]; then echo "Frontend build successful"; else echo "Frontend build failed"; exit 1; fi
 
 # Build backend
 FROM node:18-alpine AS backend-build
 WORKDIR /app
 COPY backend/ ./backend/
 WORKDIR /app/backend
-RUN npm install
+RUN npm ci --only=production
 RUN npm run build
 
 # Production image
@@ -49,11 +48,11 @@ RUN npm ci --only=production
 RUN mkdir -p /app/uploads
 
 # Expose ports
-EXPOSE 3001
+EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
 # Start the application
 CMD ["npm", "run", "start:production"]
