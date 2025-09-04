@@ -140,7 +140,7 @@ class ContentMatcher:
                 
                 try:
                     response = self.openai_client.chat.completions.create(
-                        model="gpt-4",
+                        model="gpt-5-mini",
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.3,
                         max_tokens=1000
@@ -354,7 +354,7 @@ class ContentMatcher:
             """
             
             response = await self.openai_client.chat.completions.create(
-                model="gpt-4",
+                model="gpt-5-mini",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
                 max_tokens=500
