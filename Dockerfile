@@ -15,25 +15,19 @@ WORKDIR /app/frontend
 # Check if we're in the right directory and files exist
 RUN echo "Current directory: $(pwd)" && ls -la
 
+# Set environment variables for frontend build
+ENV REACT_APP_API_URL=/api
+ENV REACT_APP_AI_SERVICE_URL=/ai-service
+
 # Check if package.json exists, if not, skip frontend build
 RUN if [ -f "package.json" ]; then \
       echo "package.json found, proceeding with frontend build"; \
-      if [ -f "package-lock.json" ]; then \
-        echo "package-lock.json found, using npm ci"; \
-        npm ci; \
-      else \
-        echo "package-lock.json not found, using npm install"; \
-        npm install; \
-      fi; \
-      echo "Setting environment variables for frontend build"; \
-      export REACT_APP_API_URL=/api; \
-      export REACT_APP_AI_SERVICE_URL=/ai-service; \
-      echo "Running frontend build"; \
+      npm install; \
       npm run build; \
     else \
-      echo "package.json not found, skipping frontend build"; \
+      echo "package.json not found, creating fallback frontend"; \
       mkdir -p build; \
-      echo "Frontend build skipped - no package.json found" > build/index.html; \
+      echo '<!DOCTYPE html><html><head><title>Presentation Generator</title></head><body><h1>Frontend Not Available</h1><p>API is running but frontend build failed.</p></body></html>' > build/index.html; \
     fi
 
 # Verify build was successful
