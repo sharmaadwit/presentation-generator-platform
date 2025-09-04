@@ -6,9 +6,10 @@ WORKDIR /app
 RUN ls -la
 RUN ls -la frontend/ || echo "frontend directory not found"
 
-# Try copying the entire frontend directory
-COPY frontend/ ./frontend/
-RUN ls -la frontend/
+# Try copying everything first to see what's available
+COPY . ./
+RUN ls -la
+RUN ls -la frontend/ || echo "frontend directory not found after COPY ."
 RUN cat frontend/package.json || echo "package.json not found in frontend/"
 
 # If frontend directory exists, work from there
