@@ -61,11 +61,7 @@ COPY --from=backend-build /app/backend/dist ./backend/dist
 COPY --from=backend-build /app/backend/node_modules ./backend/node_modules
 COPY --from=backend-build /app/backend/package*.json ./backend/
 
-# Copy root files (if they exist)
-COPY package*.json ./ 2>/dev/null || echo "No root package.json to copy"
-
-# Install root dependencies (only if package.json exists)
-RUN if [ -f "package.json" ]; then npm ci --only=production; else echo "No root package.json, skipping root dependencies"; fi
+# No root package.json needed - skipping root dependencies
 
 # Create upload directory
 RUN mkdir -p /app/uploads
