@@ -7,7 +7,15 @@ COPY frontend/ ./frontend/
 
 # Install frontend dependencies and build
 WORKDIR /app/frontend
-RUN npm ci
+
+# Check if package-lock.json exists, if not use npm install
+RUN if [ -f "package-lock.json" ]; then \
+      echo "package-lock.json found, using npm ci"; \
+      npm ci; \
+    else \
+      echo "package-lock.json not found, using npm install"; \
+      npm install; \
+    fi
 
 # Set environment variables for frontend build
 ENV REACT_APP_API_URL=/api
