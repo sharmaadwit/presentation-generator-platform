@@ -34,7 +34,7 @@ export const sourceController = {
             title || file.originalname,
             description || '',
             industry,
-            tags ? tags.split(',').map(t => t.trim()) : [],
+            tags ? tags.split(',').map((t: string) => t.trim()) : [],
             file.path,
             'uploaded',
             JSON.stringify({ author, originalName: file.originalname }),

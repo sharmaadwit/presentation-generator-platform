@@ -39,7 +39,7 @@ export const uploadController = {
           title || req.file.originalname,
           description || '',
           industry || '',
-          tags ? tags.split(',').map(t => t.trim()) : [],
+          tags ? tags.split(',').map((t: string) => t.trim()) : [],
           'uploaded'
         ]
       );

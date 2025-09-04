@@ -17,3 +17,8 @@ railway.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Don't ignore frontend and backend directories
+!frontend/
+!backend/
+!ai-service/
