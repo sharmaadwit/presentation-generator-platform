@@ -36,7 +36,7 @@ FROM node:18-alpine AS backend-build
 WORKDIR /app
 COPY backend/ ./backend/
 WORKDIR /app/backend
-RUN npm ci --only=production
+RUN npm ci
 RUN npm run build
 
 # Production image
