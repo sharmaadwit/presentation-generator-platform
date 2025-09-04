@@ -21,7 +21,7 @@ import { connectDatabase } from './config/database';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 console.log('🔧 Environment variables:');
 console.log(`  PORT: ${PORT}`);
