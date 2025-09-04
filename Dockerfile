@@ -13,6 +13,8 @@ RUN echo "Checking if frontend directory exists:" && test -d /app/frontend && ec
 RUN echo "Checking for any frontend files:" && find /app -name "package.json" -path "*/frontend/*" 2>/dev/null || echo "No frontend package.json found"
 RUN echo "All package.json files found:" && find /app -name "package.json" 2>/dev/null || echo "No package.json files found"
 RUN echo "All directories in /app:" && find /app -type d -maxdepth 2 2>/dev/null || echo "No directories found"
+RUN echo "Checking if frontend source files exist:" && find /app -path "*/frontend/src*" 2>/dev/null || echo "No frontend src directory found"
+RUN echo "Checking if frontend public files exist:" && find /app -path "*/frontend/public*" 2>/dev/null || echo "No frontend public directory found"
 RUN echo "=== END DEBUGGING ==="
 
 # Install frontend dependencies and build
@@ -59,11 +61,11 @@ COPY --from=backend-build /app/backend/dist ./backend/dist
 COPY --from=backend-build /app/backend/node_modules ./backend/node_modules
 COPY --from=backend-build /app/backend/package*.json ./backend/
 
-# Copy root files
-COPY package*.json ./
+# Copy root files (if they exist)
+COPY package*.json ./ 2>/dev/null || echo "No root package.json to copy"
 
-# Install root dependencies
-RUN npm ci --only=production
+# Install root dependencies (only if package.json exists)
+RUN if [ -f "package.json" ]; then npm ci --only=production; else echo "No root package.json, skipping root dependencies"; fi
 
 # Create upload directory
 RUN mkdir -p /app/uploads
