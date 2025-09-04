@@ -1,7 +1,16 @@
 # Multi-stage build for Railway deployment
 FROM node:18-alpine AS frontend-build
 WORKDIR /app
+
+# Debug: List what's in the build context
+RUN ls -la
+RUN ls -la frontend/ || echo "frontend directory not found"
+
+# Copy frontend directory
 COPY frontend/ ./frontend/
+RUN ls -la frontend/
+RUN cat frontend/package.json || echo "package.json not found"
+
 WORKDIR /app/frontend
 RUN npm install
 RUN npm run build
