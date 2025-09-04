@@ -2,11 +2,11 @@
 FROM node:18-alpine AS frontend-build
 WORKDIR /app
 
-# Copy frontend files
-COPY frontend/ ./frontend/
+# Copy everything first to see what's available
+COPY . ./
 
 # Debug: Check what was copied
-RUN echo "Contents of /app after copying frontend:" && ls -la /app/
+RUN echo "Contents of /app after copying everything:" && ls -la /app/
 RUN echo "Contents of /app/frontend:" && ls -la /app/frontend/ || echo "frontend directory not found"
 
 # Install frontend dependencies and build
