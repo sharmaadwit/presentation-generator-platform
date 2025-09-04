@@ -57,6 +57,9 @@ RUN npm run build
 # Production image
 FROM node:18-alpine AS production
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 WORKDIR /app
 
 # Copy built applications
@@ -75,8 +78,8 @@ EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+  CMD curl -f http://localhost:5000/health || exit 1
 
 # Start the application
 WORKDIR /app/backend
-CMD ["sh", "-c", "echo 'Starting backend...' && node dist/index.js"]
+CMD ["sh", "-c", "echo 'Starting backend...' && echo 'Current directory:' && pwd && echo 'Files in directory:' && ls -la && echo 'Starting Node.js...' && node dist/index.js"]
