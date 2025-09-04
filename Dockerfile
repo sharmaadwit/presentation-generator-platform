@@ -15,6 +15,8 @@ RUN echo "All package.json files found:" && find /app -name "package.json" 2>/de
 RUN echo "All directories in /app:" && find /app -type d -maxdepth 2 2>/dev/null || echo "No directories found"
 RUN echo "Checking if frontend source files exist:" && find /app -path "*/frontend/src*" 2>/dev/null || echo "No frontend src directory found"
 RUN echo "Checking if frontend public files exist:" && find /app -path "*/frontend/public*" 2>/dev/null || echo "No frontend public directory found"
+RUN echo "Checking for test file:" && find /app -name "test-file.txt" 2>/dev/null || echo "No test file found"
+RUN echo "All files in /app:" && find /app -type f -maxdepth 2 2>/dev/null || echo "No files found"
 RUN echo "=== END DEBUGGING ==="
 
 # Install frontend dependencies and build
