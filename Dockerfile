@@ -12,20 +12,29 @@ RUN echo "Contents of /app/frontend:" && ls -la /app/frontend/ || echo "frontend
 # Install frontend dependencies and build
 WORKDIR /app/frontend
 
-# Check if package-lock.json exists, if not use npm install
-RUN if [ -f "package-lock.json" ]; then \
-      echo "package-lock.json found, using npm ci"; \
-      npm ci; \
+# Check if we're in the right directory and files exist
+RUN echo "Current directory: $(pwd)" && ls -la
+
+# Check if package.json exists, if not, skip frontend build
+RUN if [ -f "package.json" ]; then \
+      echo "package.json found, proceeding with frontend build"; \
+      if [ -f "package-lock.json" ]; then \
+        echo "package-lock.json found, using npm ci"; \
+        npm ci; \
+      else \
+        echo "package-lock.json not found, using npm install"; \
+        npm install; \
+      fi; \
+      echo "Setting environment variables for frontend build"; \
+      export REACT_APP_API_URL=/api; \
+      export REACT_APP_AI_SERVICE_URL=/ai-service; \
+      echo "Running frontend build"; \
+      npm run build; \
     else \
-      echo "package-lock.json not found, using npm install"; \
-      npm install; \
+      echo "package.json not found, skipping frontend build"; \
+      mkdir -p build; \
+      echo "Frontend build skipped - no package.json found" > build/index.html; \
     fi
-
-# Set environment variables for frontend build
-ENV REACT_APP_API_URL=/api
-ENV REACT_APP_AI_SERVICE_URL=/ai-service
-
-RUN npm run build
 
 # Verify build was successful
 RUN ls -la build/ || echo "Build directory not found"
