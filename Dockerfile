@@ -6,10 +6,14 @@ WORKDIR /app
 COPY . ./
 
 # Debug: Check what was copied
+RUN echo "=== DEBUGGING BUILD CONTEXT ==="
 RUN echo "Contents of /app after copying everything:" && ls -la /app/
 RUN echo "Contents of /app/frontend:" && ls -la /app/frontend/ || echo "frontend directory not found"
 RUN echo "Checking if frontend directory exists:" && test -d /app/frontend && echo "frontend directory exists" || echo "frontend directory does not exist"
 RUN echo "Checking for any frontend files:" && find /app -name "package.json" -path "*/frontend/*" 2>/dev/null || echo "No frontend package.json found"
+RUN echo "All package.json files found:" && find /app -name "package.json" 2>/dev/null || echo "No package.json files found"
+RUN echo "All directories in /app:" && find /app -type d -maxdepth 2 2>/dev/null || echo "No directories found"
+RUN echo "=== END DEBUGGING ==="
 
 # Install frontend dependencies and build
 WORKDIR /app/frontend
