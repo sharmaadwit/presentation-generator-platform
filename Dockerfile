@@ -10,12 +10,15 @@ RUN ls -la frontend/ || echo "frontend directory not found"
 COPY . ./
 RUN ls -la
 RUN ls -la frontend/ || echo "frontend directory not found after COPY ."
-RUN cat frontend/package.json || echo "package.json not found in frontend/"
 
-# If frontend directory exists, work from there
-WORKDIR /app/frontend
-RUN npm install
-RUN npm run build
+# Check if frontend directory has files
+RUN if [ -f "frontend/package.json" ]; then \
+      echo "Frontend directory found with package.json"; \
+      cd frontend && npm install && npm run build; \
+    else \
+      echo "Frontend directory not found, skipping frontend build"; \
+      mkdir -p frontend/build; \
+    fi
 
 # Build backend
 FROM node:18-alpine AS backend-build
