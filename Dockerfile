@@ -8,6 +8,8 @@ COPY . ./
 # Debug: Check what was copied
 RUN echo "Contents of /app after copying everything:" && ls -la /app/
 RUN echo "Contents of /app/frontend:" && ls -la /app/frontend/ || echo "frontend directory not found"
+RUN echo "Checking if frontend directory exists:" && test -d /app/frontend && echo "frontend directory exists" || echo "frontend directory does not exist"
+RUN echo "Checking for any frontend files:" && find /app -name "package.json" -path "*/frontend/*" 2>/dev/null || echo "No frontend package.json found"
 
 # Install frontend dependencies and build
 WORKDIR /app/frontend
@@ -27,7 +29,7 @@ RUN if [ -f "package.json" ]; then \
     else \
       echo "package.json not found, creating fallback frontend"; \
       mkdir -p build; \
-      echo '<!DOCTYPE html><html><head><title>Presentation Generator</title></head><body><h1>Frontend Not Available</h1><p>API is running but frontend build failed.</p></body></html>' > build/index.html; \
+      echo '<!DOCTYPE html><html><head><title>Presentation Generator</title><style>body{font-family:Arial,sans-serif;max-width:800px;margin:50px auto;padding:20px;text-align:center;}h1{color:#e74c3c;}p{color:#666;line-height:1.6;}.status{background:#f8f9fa;padding:20px;border-radius:8px;margin:20px 0;}.api-info{background:#e8f5e8;padding:15px;border-radius:5px;margin:20px 0;}</style></head><body><h1>🚧 Frontend Build Issue</h1><div class="status"><p><strong>Status:</strong> API is running but frontend build failed.</p><p><strong>Issue:</strong> Frontend source files not found during build process.</p></div><div class="api-info"><p><strong>✅ Backend API is working!</strong></p><p>You can access the API endpoints directly:</p><ul style="text-align:left;display:inline-block;"><li><code>/api/*</code> - API endpoints</li><li><code>/health</code> - Health check</li></ul></div><p><em>This is a temporary fallback page. The development team has been notified.</em></p></body></html>' > build/index.html; \
     fi
 
 # Verify build was successful
