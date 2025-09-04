@@ -14,3 +14,8 @@ setup-railway.sh
 docker-compose.yml
 railway-compose.yml
 railway.json
+
+# Don't ignore frontend and backend directories
+!frontend/
+!backend/
+!ai-service/
