@@ -9,6 +9,9 @@ ENV REACT_APP_AI_SERVICE_URL=/ai-service
 # Copy entire frontend directory
 COPY frontend/ ./
 
+# Debug: List files to see what was copied
+RUN ls -la
+
 # Install dependencies
 RUN npm install
 
@@ -21,6 +24,9 @@ WORKDIR /app/backend
 
 # Copy entire backend directory
 COPY backend/ ./
+
+# Debug: List files to see what was copied
+RUN ls -la
 
 # Install dependencies
 RUN npm install
