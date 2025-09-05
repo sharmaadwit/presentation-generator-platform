@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 200 * 1024 * 1024, // 200MB limit
+    fileSize: 500 * 1024 * 1024, // 500MB limit
   },
   fileFilter: (req, file, cb) => {
     // Allow only presentation files
