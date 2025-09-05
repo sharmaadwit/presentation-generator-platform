@@ -797,6 +797,8 @@ async function loadFiles() {
         } else {
             if (filesList) {
                 filesList.innerHTML = files.map(file => createFileCard(file)).join('');
+                // Add event delegation for buttons
+                addFileButtonEventListeners();
             }
         }
         
@@ -805,6 +807,24 @@ async function loadFiles() {
         if (filesLoading) filesLoading.style.display = 'none';
         showNotification('Failed to load files', 'error');
     }
+}
+
+function addFileButtonEventListeners() {
+    // Add event delegation for download buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.download-btn')) {
+            const button = e.target.closest('.download-btn');
+            const fileId = button.getAttribute('data-file-id');
+            downloadFile(fileId);
+        }
+        
+        if (e.target.closest('.delete-btn')) {
+            const button = e.target.closest('.delete-btn');
+            const fileId = button.getAttribute('data-file-id');
+            const fileName = button.getAttribute('data-file-name');
+            deleteFile(fileId, fileName);
+        }
+    });
 }
 
 function createFileCard(file) {
@@ -836,10 +856,10 @@ function createFileCard(file) {
                 </div>
                 
                 <div class="flex items-center space-x-2 ml-4">
-                    <button onclick="downloadFile('${file.id}')" class="text-blue-600 hover:text-blue-800 p-2" title="Download">
+                    <button class="download-btn text-blue-600 hover:text-blue-800 p-2" data-file-id="${file.id}" title="Download">
                         <i class="fas fa-download"></i>
                     </button>
-                    <button onclick="deleteFile('${file.id}', '${file.originalName}')" class="text-red-600 hover:text-red-800 p-2" title="Delete">
+                    <button class="delete-btn text-red-600 hover:text-red-800 p-2" data-file-id="${file.id}" data-file-name="${file.originalName}" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
