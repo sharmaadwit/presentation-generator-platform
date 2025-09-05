@@ -88,4 +88,4 @@ RUN echo "Build timestamp: $(date)" > /tmp/build-timestamp.txt
 
 # Start the application
 WORKDIR /app/backend
-CMD ["sh", "-c", "echo '=== BACKEND STARTUP DEBUG ===' && echo 'Timestamp:' $(date) && echo 'Current directory:' && pwd && echo 'Files in directory:' && ls -la && echo 'Checking if dist/index.js exists:' && ls -la dist/ && echo 'Node version:' && node --version && echo 'Testing if we can require the file:' && node -e 'console.log(\"Testing require...\"); try { require(\"./dist/index.js\"); console.log(\"Require successful\"); } catch(e) { console.error(\"Require failed:\", e.message); process.exit(1); }' && echo 'Starting Node.js...' && node dist/index.js"]
+CMD ["sh", "-c", "echo '=== BACKEND STARTUP DEBUG ===' && echo 'Timestamp:' $(date) && echo 'Current directory:' && pwd && echo 'Files in directory:' && ls -la && echo 'Checking if dist/index.js exists:' && ls -la dist/ && echo 'Node version:' && node --version && echo 'Starting Node.js...' && node dist/index.js"]
