@@ -65,6 +65,54 @@ function setupEventListeners() {
         uploadArea.addEventListener('dragover', handleDragOver);
         uploadArea.addEventListener('drop', handleDrop);
     }
+    
+    // Navigation links
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const tab = link.getAttribute('data-tab');
+            if (tab) {
+                showTab(tab);
+            }
+        });
+    });
+    
+    // Start generate button
+    const startGenerateBtn = document.getElementById('startGenerateBtn');
+    if (startGenerateBtn) {
+        startGenerateBtn.addEventListener('click', () => showTab('generate'));
+    }
+    
+    // Download buttons
+    const downloadBtn = document.getElementById('downloadBtn');
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', downloadPresentation);
+    }
+    
+    const downloadNowBtn = document.getElementById('downloadNowBtn');
+    if (downloadNowBtn) {
+        downloadNowBtn.addEventListener('click', downloadPresentation);
+    }
+    
+    // Choose files button
+    const chooseFilesBtn = document.getElementById('chooseFilesBtn');
+    if (chooseFilesBtn) {
+        chooseFilesBtn.addEventListener('click', () => {
+            document.getElementById('fileInput').click();
+        });
+    }
+    
+    // Mobile menu button
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+    }
+    
+    // Show register button
+    const showRegisterBtn = document.getElementById('showRegisterBtn');
+    if (showRegisterBtn) {
+        showRegisterBtn.addEventListener('click', showRegister);
+    }
 }
 
 // Tab navigation functions
@@ -591,5 +639,4 @@ function toggleMobileMenu() {
 
 // Export functions for global access
 window.showTab = showTab;
-window.showManageTab = showManageTab;
 window.toggleMobileMenu = toggleMobileMenu;

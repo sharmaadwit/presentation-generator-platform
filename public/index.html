@@ -44,12 +44,12 @@
                     <h1 class="text-2xl font-bold">SlideGen AI</h1>
                 </div>
                 <nav class="hidden md:flex space-x-6">
-                    <a href="#home" class="hover:text-blue-200 transition-colors" onclick="showTab('home')">Home</a>
-                    <a href="#generate" class="hover:text-blue-200 transition-colors" onclick="showTab('generate')">Generate & Download</a>
-                    <a href="#upload" class="hover:text-blue-200 transition-colors" onclick="showTab('upload')" id="uploadNav" style="display: none;">Upload & Analyze</a>
-                    <a href="#login" class="hover:text-blue-200 transition-colors" onclick="showTab('login')" id="loginNav">Login</a>
+                    <a href="#home" class="nav-link hover:text-blue-200 transition-colors" data-tab="home">Home</a>
+                    <a href="#generate" class="nav-link hover:text-blue-200 transition-colors" data-tab="generate">Generate & Download</a>
+                    <a href="#upload" class="nav-link hover:text-blue-200 transition-colors" data-tab="upload" id="uploadNav" style="display: none;">Upload & Analyze</a>
+                    <a href="#login" class="nav-link hover:text-blue-200 transition-colors" data-tab="login" id="loginNav">Login</a>
                 </nav>
-                <button class="md:hidden text-white" onclick="toggleMobileMenu()">
+                <button class="md:hidden text-white" id="mobileMenuBtn">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
             </div>
@@ -86,7 +86,7 @@
             </div>
 
             <div class="text-center">
-                <button onclick="showTab('generate')" class="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors">
+                <button id="startGenerateBtn" class="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors">
                     Start Generating Presentations
                 </button>
             </div>
@@ -134,7 +134,7 @@
                                 <i class="fas fa-magic mr-2"></i>
                                 Generate Presentation
                             </button>
-                            <button type="button" id="downloadBtn" class="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors" onclick="downloadPresentation()" disabled>
+                            <button type="button" id="downloadBtn" class="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors" disabled>
                                 <i class="fas fa-download mr-2"></i>
                                 Download PPT
                             </button>
@@ -165,7 +165,7 @@
                                         <p class="text-green-600 text-sm">Your presentation is ready for download</p>
                                     </div>
                                 </div>
-                                <button onclick="downloadPresentation()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                                <button id="downloadNowBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
                                     <i class="fas fa-download mr-2"></i>
                                     Download Now
                                 </button>
@@ -192,9 +192,9 @@
                         <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
                         <p class="text-gray-600 mb-4">Drag and drop your presentation files here, or click to browse</p>
                         <input type="file" id="fileInput" multiple accept=".pptx,.ppt,.pdf" class="hidden">
-                        <button onclick="document.getElementById('fileInput').click()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                            Choose Files
-                        </button>
+                                                    <button id="chooseFilesBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                Choose Files
+                            </button>
                     </div>
                     
                     <div id="uploadProgress" class="mt-4 hidden">
@@ -240,7 +240,7 @@
                     
                     <div class="mt-6 text-center">
                         <p class="text-gray-600">Don't have an account?</p>
-                        <button onclick="showRegister()" class="text-blue-600 hover:text-blue-800 font-medium">
+                        <button id="showRegisterBtn" class="text-blue-600 hover:text-blue-800 font-medium">
                             Register here
                         </button>
                     </div>
