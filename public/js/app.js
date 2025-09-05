@@ -875,12 +875,18 @@ async function downloadFile(fileId) {
 }
 
 async function deleteFile(fileId, fileName) {
+    console.log('Delete function called with:', { fileId, fileName });
+    
     if (!confirm(`Are you sure you want to delete "${fileName}"? This action cannot be undone.`)) {
+        console.log('Delete cancelled by user');
         return;
     }
     
     try {
         const token = localStorage.getItem('token');
+        console.log('Token found:', !!token);
+        console.log('Making DELETE request to:', `${API_BASE}/upload/files/${fileId}`);
+        
         const response = await fetch(`${API_BASE}/upload/files/${fileId}`, {
             method: 'DELETE',
             headers: {
@@ -889,16 +895,23 @@ async function deleteFile(fileId, fileName) {
             }
         });
         
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        
         if (!response.ok) {
-            throw new Error('Failed to delete file');
+            const errorText = await response.text();
+            console.error('Delete failed with response:', errorText);
+            throw new Error(`Failed to delete file: ${response.status} ${errorText}`);
         }
         
+        const result = await response.json();
+        console.log('Delete successful:', result);
         showNotification('File deleted successfully', 'success');
         loadFiles(); // Refresh the file list
         
     } catch (error) {
         console.error('Error deleting file:', error);
-        showNotification('Failed to delete file', 'error');
+        showNotification(`Failed to delete file: ${error.message}`, 'error');
     }
 }
 
