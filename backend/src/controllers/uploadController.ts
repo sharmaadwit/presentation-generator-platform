@@ -267,5 +267,111 @@ export const uploadController = {
     } finally {
       client.release();
     }
+  },
+
+  // Get all uploaded files for admin
+  getAllFiles: async (req: AuthRequest, res: Response): Promise<void> => {
+    const client = await pool.connect();
+
+    try {
+      const result = await client.query(`
+        SELECT 
+          u.id,
+          u.original_filename,
+          u.file_size,
+          u.file_type,
+          u.file_path,
+          u.upload_status,
+          u.created_at,
+          u.updated_at,
+          u.industry,
+          u.tags,
+          u.user_id,
+          us.name as user_name,
+          us.email as user_email
+        FROM uploads u
+        LEFT JOIN users us ON u.user_id = us.id
+        ORDER BY u.created_at DESC
+      `);
+
+      const files = result.rows.map(file => ({
+        id: file.id,
+        originalName: file.original_filename,
+        size: file.file_size,
+        type: file.file_type,
+        path: file.file_path,
+        status: file.upload_status,
+        createdAt: file.created_at,
+        updatedAt: file.updated_at,
+        industry: file.industry,
+        tags: file.tags,
+        userId: file.user_id,
+        userName: file.user_name,
+        userEmail: file.user_email
+      }));
+
+      res.json({ files });
+
+    } catch (error) {
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Delete uploaded file
+  deleteFile: async (req: AuthRequest, res: Response): Promise<void> => {
+    const { fileId } = req.params;
+    const client = await pool.connect();
+
+    try {
+      // Get file details
+      const fileResult = await client.query(
+        'SELECT * FROM uploads WHERE id = $1',
+        [fileId]
+      );
+
+      if (fileResult.rows.length === 0) {
+        res.status(404).json({ message: 'File not found' });
+        return;
+      }
+
+      const file = fileResult.rows[0];
+
+      // Delete file from filesystem
+      if (file.file_path) {
+        const fs = require('fs');
+        const path = require('path');
+        const filePath = path.join(process.cwd(), file.file_path);
+        
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+
+      // Log file deletion
+      await logFileDeletion(
+        req.user!.id,
+        fileId,
+        file.original_filename,
+        'Admin deletion',
+        undefined,
+        req.ip,
+        req.get('User-Agent')
+      );
+
+      // Delete from database
+      await client.query(
+        'DELETE FROM uploads WHERE id = $1',
+        [fileId]
+      );
+
+      res.json({ message: 'File deleted successfully' });
+
+    } catch (error) {
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 };

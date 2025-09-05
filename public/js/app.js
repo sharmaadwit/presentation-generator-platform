@@ -64,6 +64,8 @@ function handleURLRouting() {
         showTab('generate');
     } else if (path === '/login') {
         showTab('login');
+    } else if (path === '/logout') {
+        handleLogout();
     } else {
         // Default to home
         showTab('home');
@@ -175,6 +177,18 @@ function setupEventListeners() {
     if (analyticsCard) {
         analyticsCard.addEventListener('click', () => showTab('dashboard'));
     }
+
+    // Logout button
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+
+    // File management buttons
+    const refreshFilesBtn = document.getElementById('refreshFilesBtn');
+    if (refreshFilesBtn) {
+        refreshFilesBtn.addEventListener('click', loadFiles);
+    }
 }
 
 // Tab navigation functions
@@ -203,6 +217,11 @@ function showTab(tabName) {
     if (selectedTab) {
         selectedTab.classList.add('active');
         currentTab = tabName;
+        
+        // Load files when admin dashboard is shown
+        if (tabName === 'adminDashboard' && isLoggedIn) {
+            loadFiles();
+        }
     }
     
     // Update URL based on tab
@@ -654,6 +673,7 @@ function updateLoginState() {
     const adminNav = document.getElementById('adminNav');
     const uploadNav = document.getElementById('uploadNav');
     const dashboardNav = document.getElementById('dashboardNav');
+    const logoutNav = document.getElementById('logoutNav');
     const logoutBtn = document.getElementById('logoutBtn');
     const uploadCard = document.getElementById('uploadCard');
     
@@ -662,6 +682,7 @@ function updateLoginState() {
         if (adminNav) adminNav.style.display = 'block';
         if (uploadNav) uploadNav.style.display = 'block';
         if (dashboardNav) dashboardNav.style.display = 'block';
+        if (logoutNav) logoutNav.style.display = 'block';
         if (logoutBtn) logoutBtn.style.display = 'block';
         
         // Update upload card for logged-in state
@@ -677,6 +698,7 @@ function updateLoginState() {
         if (adminNav) adminNav.style.display = 'none';
         if (uploadNav) uploadNav.style.display = 'none';
         if (dashboardNav) dashboardNav.style.display = 'none';
+        if (logoutNav) logoutNav.style.display = 'none';
         if (logoutBtn) logoutBtn.style.display = 'none';
         
         // Update upload card for logged-out state
@@ -692,6 +714,192 @@ function updateLoginState() {
 
 function showRegister() {
     showNotification('Registration functionality coming soon!', 'info');
+}
+
+// Logout functionality
+async function handleLogout() {
+    try {
+        // Call logout API
+        const token = localStorage.getItem('token');
+        if (token) {
+            try {
+                await fetch(`${API_BASE}/auth/logout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+            } catch (apiError) {
+                console.warn('Logout API call failed:', apiError);
+                // Continue with client-side logout even if API fails
+            }
+        }
+        
+        // Clear user session
+        isLoggedIn = false;
+        currentUser = null;
+        
+        // Clear localStorage
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        // Update UI
+        updateLoginState();
+        
+        // Show notification
+        showNotification('Logged out successfully', 'success');
+        
+        // Redirect to home page
+        showTab('home');
+        
+        // Update URL to home
+        window.history.pushState({}, '', '/');
+        
+    } catch (error) {
+        console.error('Logout error:', error);
+        showNotification('Logout failed. Please try again.', 'error');
+    }
+}
+
+// File management functions
+async function loadFiles() {
+    const filesLoading = document.getElementById('filesLoading');
+    const filesList = document.getElementById('filesList');
+    const noFilesMessage = document.getElementById('noFilesMessage');
+    
+    try {
+        // Show loading state
+        if (filesLoading) filesLoading.style.display = 'block';
+        if (filesList) filesList.innerHTML = '';
+        if (noFilesMessage) noFilesMessage.style.display = 'none';
+        
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/upload/files`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load files');
+        }
+        
+        const data = await response.json();
+        const files = data.files || [];
+        
+        // Hide loading state
+        if (filesLoading) filesLoading.style.display = 'none';
+        
+        if (files.length === 0) {
+            if (noFilesMessage) noFilesMessage.style.display = 'block';
+        } else {
+            if (filesList) {
+                filesList.innerHTML = files.map(file => createFileCard(file)).join('');
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error loading files:', error);
+        if (filesLoading) filesLoading.style.display = 'none';
+        showNotification('Failed to load files', 'error');
+    }
+}
+
+function createFileCard(file) {
+    const fileSize = formatFileSize(file.size);
+    const uploadDate = new Date(file.createdAt).toLocaleDateString();
+    const statusColor = getStatusColor(file.status);
+    
+    return `
+        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <div class="flex items-center mb-2">
+                        <i class="fas fa-file-powerpoint text-blue-600 text-xl mr-3"></i>
+                        <div>
+                            <h4 class="font-medium text-gray-900">${file.originalName}</h4>
+                            <p class="text-sm text-gray-500">${fileSize} • ${uploadDate}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        <span class="px-2 py-1 bg-${statusColor}-100 text-${statusColor}-800 text-xs rounded-full">
+                            ${file.status || 'Unknown'}
+                        </span>
+                        ${file.industry ? `<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">${file.industry}</span>` : ''}
+                        ${file.type ? `<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">${file.type}</span>` : ''}
+                    </div>
+                    
+                    ${file.userName ? `<p class="text-sm text-gray-600">Uploaded by: ${file.userName}</p>` : ''}
+                </div>
+                
+                <div class="flex items-center space-x-2 ml-4">
+                    <button onclick="downloadFile('${file.id}')" class="text-blue-600 hover:text-blue-800 p-2" title="Download">
+                        <i class="fas fa-download"></i>
+                    </button>
+                    <button onclick="deleteFile('${file.id}', '${file.originalName}')" class="text-red-600 hover:text-red-800 p-2" title="Delete">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function getStatusColor(status) {
+    switch (status) {
+        case 'completed': return 'green';
+        case 'processing': return 'yellow';
+        case 'failed': return 'red';
+        default: return 'gray';
+    }
+}
+
+async function downloadFile(fileId) {
+    try {
+        showNotification('Download functionality coming soon!', 'info');
+    } catch (error) {
+        console.error('Error downloading file:', error);
+        showNotification('Failed to download file', 'error');
+    }
+}
+
+async function deleteFile(fileId, fileName) {
+    if (!confirm(`Are you sure you want to delete "${fileName}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/upload/files/${fileId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete file');
+        }
+        
+        showNotification('File deleted successfully', 'success');
+        loadFiles(); // Refresh the file list
+        
+    } catch (error) {
+        console.error('Error deleting file:', error);
+        showNotification('Failed to delete file', 'error');
+    }
 }
 
 // Action functions

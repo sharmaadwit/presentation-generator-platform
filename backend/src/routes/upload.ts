@@ -75,4 +75,14 @@ router.delete('/:uploadId',
   asyncHandler(uploadController.deleteUploadedPresentation)
 );
 
+// Get all uploaded files for admin
+router.get('/files',
+  asyncHandler(uploadController.getAllFiles)
+);
+
+// Delete uploaded file
+router.delete('/files/:fileId',
+  asyncHandler(uploadController.deleteFile)
+);
+
 export { router as uploadRoutes };
