@@ -80,11 +80,13 @@ RUN mkdir -p /app/uploads
 EXPOSE 5000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:5000/health || exit 1
 
-# Force fresh build by adding timestamp
+# Force fresh build by adding timestamp and dummy file
 RUN echo "Build timestamp: $(date)" > /tmp/build-timestamp.txt
+RUN echo "Forcing fresh build - $(date)" > /tmp/force-build.txt
+RUN ls -la /tmp/
 
 # Start the application
 WORKDIR /app/backend
