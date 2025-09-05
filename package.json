@@ -9,15 +9,11 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:ai": "cd ai-service && python app.py",
     "build": "npm run build:frontend && npm run build:backend",
-    "build:frontend": "cd frontend && npm run build",
+    "build:frontend": "cd frontend && npm run build && cp -r build ../frontend-build",
     "build:backend": "cd backend && npm run build",
     "start": "cd backend && npm start",
     "start:production": "cd backend && npm start",
-    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../ai-service && pip install -r requirements.txt",
-    "docker:build": "docker-compose build",
-    "docker:up": "docker-compose up -d",
-    "docker:down": "docker-compose down",
-    "docker:logs": "docker-compose logs -f"
+    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../ai-service && pip install -r requirements.txt"
   },
   "keywords": ["presentation", "ai", "automation", "slides", "generation"],
   "author": "Your Name",

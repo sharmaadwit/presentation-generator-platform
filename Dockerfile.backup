@@ -13,7 +13,6 @@ COPY frontend/src/ /app/frontend/src/
 COPY frontend/public/ /app/frontend/public/
 COPY frontend/tsconfig.json /app/frontend/
 COPY frontend/tailwind.config.js /app/frontend/
-COPY frontend/postcss.config.js /app/frontend/
 
 # Debug: List all files to see what was copied
 RUN ls -la /app/frontend/

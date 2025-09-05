@@ -66,7 +66,7 @@ app.use('/api/sources', sourceRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Serve static files from frontend build (if it exists)
-const frontendBuildPath = path.join(__dirname, '../../frontend/build');
+const frontendBuildPath = path.join(__dirname, '../../frontend-build');
 const frontendIndexPath = path.join(frontendBuildPath, 'index.html');
 
 // Check if frontend build exists
