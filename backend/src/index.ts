@@ -23,10 +23,6 @@ dotenv.config();
 const app = express();
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
-console.log('🔧 Environment variables:');
-console.log(`  PORT: ${PORT}`);
-console.log(`  NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
-console.log(`  DATABASE_URL: ${process.env.DATABASE_URL ? 'set' : 'not set'}`);
 
 // Security middleware
 app.use(helmet());
@@ -108,28 +104,19 @@ app.use(errorHandler);
 
 // Start server
 const startServer = async () => {
-  console.log('🔄 Starting server initialization...');
-  console.log(`📍 Port: ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  
   try {
     // Try to connect to database, but don't fail if it's not available
     try {
-      console.log('🔄 Attempting database connection...');
       await connectDatabase();
-      console.log('✅ Database connected successfully');
     } catch (dbError) {
-      console.warn('⚠️ Database connection failed, starting server without database:', dbError);
+      console.warn('Database connection failed, starting server without database:', dbError);
     }
     
-    console.log('🔄 Starting HTTP server...');
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`🌐 Server is ready to accept connections`);
+      console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 };
