@@ -20,7 +20,7 @@ class ContentMatcher:
             self.openai_client = None
         else:
             self.openai_client = openai.OpenAI(api_key=openai_key)
-            logger.info("OpenAI client initialized successfully")
+            logger.info("OpenAI client initialized successfully with GPT-5 low thinking mode")
         
         # Initialize text vectorizer for similarity matching
         self.vectorizer = TfidfVectorizer(
@@ -139,11 +139,15 @@ class ContentMatcher:
                 """
                 
                 try:
+                    logger.info("Using GPT-5 with low thinking mode for slide analysis")
                     response = self.openai_client.chat.completions.create(
-                        model="gpt-5-mini",
+                        model="gpt-5",
                         messages=[{"role": "user", "content": prompt}],
                         temperature=0.3,
-                        max_tokens=1000
+                        max_tokens=1000,
+                        extra_body={
+                            "thinking_mode": "low"
+                        }
                     )
                     ai_scores = self._parse_ai_response(response.choices[0].message.content)
                 except Exception as e:
@@ -353,11 +357,15 @@ class ContentMatcher:
             }}
             """
             
+            logger.info("Using GPT-5 with low thinking mode for content enhancement")
             response = await self.openai_client.chat.completions.create(
-                model="gpt-5-mini",
+                model="gpt-5",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=500,
+                extra_body={
+                    "thinking_mode": "low"
+                }
             )
             
             # Parse and apply enhancements
