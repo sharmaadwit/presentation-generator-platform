@@ -276,22 +276,23 @@ export const uploadController = {
     try {
       const result = await client.query(`
         SELECT 
-          u.id,
-          u.original_filename,
-          u.file_size,
-          u.mime_type as file_type,
-          u.file_path,
-          u.status as upload_status,
-          u.created_at,
-          u.processed_at as updated_at,
-          u.industry,
-          u.tags,
-          u.user_id,
+          ps.id,
+          ps.title as original_filename,
+          COALESCE(ps.metadata->>'fileSize', '0')::bigint as file_size,
+          'presentation' as file_type,
+          ps.file_path,
+          ps.status as upload_status,
+          ps.created_at,
+          ps.updated_at,
+          ps.industry,
+          ps.tags,
+          ps.uploaded_by as user_id,
           us.name as user_name,
           us.email as user_email
-        FROM uploaded_presentations u
-        LEFT JOIN users us ON u.user_id = us.id
-        ORDER BY u.created_at DESC
+        FROM presentation_sources ps
+        LEFT JOIN users us ON ps.uploaded_by = us.id
+        WHERE ps.source_type = 'uploaded'
+        ORDER BY ps.created_at DESC
       `);
 
       const files = result.rows.map(file => ({
@@ -327,8 +328,8 @@ export const uploadController = {
     try {
       // Get file details
       const fileResult = await client.query(
-        'SELECT * FROM uploaded_presentations WHERE id = $1',
-        [fileId]
+        'SELECT * FROM presentation_sources WHERE id = $1 AND source_type = $2',
+        [fileId, 'uploaded']
       );
 
       if (fileResult.rows.length === 0) {
@@ -364,7 +365,7 @@ export const uploadController = {
 
       // Delete from database
       await client.query(
-        'DELETE FROM uploaded_presentations WHERE id = $1',
+        'DELETE FROM presentation_sources WHERE id = $1',
         [fileId]
       );
 
