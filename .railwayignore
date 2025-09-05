@@ -10,11 +10,7 @@ coverage
 *.log
 build
 dist
-frontend/build
 backend/dist
 ai-service/__pycache__
 ai-service/*.pyc
 uploads
-Dockerfile
-docker-compose.yml
-.dockerignore
