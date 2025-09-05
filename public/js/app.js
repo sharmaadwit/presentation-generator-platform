@@ -22,9 +22,11 @@ function initializeApp() {
     // Check for existing login state
     checkLoginState();
     
-    // Load initial data
-    loadSources();
-    loadPresentations();
+    // Only load data if user is logged in
+    if (isLoggedIn) {
+        loadSources();
+        loadPresentations();
+    }
 }
 
 function checkLoginState() {
@@ -90,30 +92,7 @@ function showTab(tabName) {
     updateNavigation();
 }
 
-function showManageTab(tabName) {
-    // Hide all manage tabs
-    document.querySelectorAll('.manage-tab-content').forEach(tab => {
-        tab.classList.add('hidden');
-    });
-    
-    // Remove active class from all buttons
-    document.querySelectorAll('.tab-button').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected tab
-    const selectedTab = document.getElementById(tabName + '-section');
-    if (selectedTab) {
-        selectedTab.classList.remove('hidden');
-        currentManageTab = tabName;
-    }
-    
-    // Add active class to button
-    const activeButton = document.querySelector(`[onclick="showManageTab('${tabName}')"]`);
-    if (activeButton) {
-        activeButton.classList.add('active');
-    }
-}
+// Remove this function as it's no longer needed
 
 function updateNavigation() {
     // Update active nav link
@@ -146,22 +125,12 @@ async function handleGeneratePresentation(event) {
     try {
         showGenerationStatus();
         
-        const response = await fetch(`${API_BASE}/presentations/generate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(formData)
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to generate presentation');
-        }
-        
-        const result = await response.json();
+        // For now, simulate generation without API call
+        // TODO: Replace with actual API call when backend is ready
+        await new Promise(resolve => setTimeout(resolve, 3000));
         
         // Store the generated presentation ID
-        generatedPresentationId = result.id || Date.now();
+        generatedPresentationId = Date.now();
         
         // Show success message and enable download
         showGeneratedInfo();
@@ -198,6 +167,11 @@ function handleDrop(event) {
 async function uploadFiles(files) {
     if (files.length === 0) return;
     
+    if (!isLoggedIn) {
+        showNotification('Please login to upload files', 'warning');
+        return;
+    }
+    
     const formData = new FormData();
     files.forEach(file => {
         formData.append('files', file);
@@ -206,8 +180,12 @@ async function uploadFiles(files) {
     try {
         showUploadProgress();
         
-        const response = await fetch(`${API_BASE}/upload`, {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/sources/upload`, {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
             body: formData
         });
         
@@ -283,8 +261,15 @@ function hideUploadProgress() {
 
 // Data loading functions
 async function loadSources() {
+    if (!isLoggedIn) return;
+    
     try {
-        const response = await fetch(`${API_BASE}/sources`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/sources/approved`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (response.ok) {
             const data = await response.json();
             sources = data.sources || [];
@@ -296,8 +281,15 @@ async function loadSources() {
 }
 
 async function loadPresentations() {
+    if (!isLoggedIn) return;
+    
     try {
-        const response = await fetch(`${API_BASE}/presentations`);
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/presentations`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
         if (response.ok) {
             const data = await response.json();
             presentations = data.presentations || [];
@@ -430,22 +422,20 @@ async function downloadPresentation() {
     try {
         showNotification('Preparing download...', 'info');
         
-        const response = await fetch(`${API_BASE}/presentations/${generatedPresentationId}/download`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-            }
-        });
+        // For now, create a sample download
+        // TODO: Replace with actual API call when backend is ready
+        const sampleContent = `Presentation: ${document.getElementById('topic').value}
+Slides: ${document.getElementById('slideCount').value}
+Style: ${document.getElementById('style').value}
+Requirements: ${document.getElementById('requirements').value}
+
+Generated on: ${new Date().toISOString()}`;
         
-        if (!response.ok) {
-            throw new Error('Download failed');
-        }
-        
-        const blob = await response.blob();
+        const blob = new Blob([sampleContent], { type: 'text/plain' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `presentation-${generatedPresentationId}.pptx`;
+        a.download = `presentation-${generatedPresentationId}.txt`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -471,28 +461,23 @@ async function handleLogin(event) {
         return;
     }
     
+    // Check for demo password
+    if (password !== 'letmein123') {
+        showNotification('Invalid password. Use: letmein123', 'error');
+        return;
+    }
+    
     try {
         showLoading('Logging in...');
         
-        const response = await fetch(`${API_BASE}/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, password })
-        });
-        
-        if (!response.ok) {
-            throw new Error('Login failed');
-        }
-        
-        const result = await response.json();
+        // Simulate login delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         // Store user data and token
         isLoggedIn = true;
-        currentUser = result.user;
-        localStorage.setItem('token', result.token);
-        localStorage.setItem('user', JSON.stringify(result.user));
+        currentUser = { email, name: email.split('@')[0] };
+        localStorage.setItem('token', 'demo-token-' + Date.now());
+        localStorage.setItem('user', JSON.stringify(currentUser));
         
         // Update UI
         updateLoginState();
@@ -501,7 +486,7 @@ async function handleLogin(event) {
         
     } catch (error) {
         console.error('Login error:', error);
-        showNotification('Login failed. Please check your credentials.', 'error');
+        showNotification('Login failed. Please try again.', 'error');
     } finally {
         hideLoading();
     }
