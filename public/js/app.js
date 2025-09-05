@@ -1,9 +1,11 @@
 // Global state
 let currentTab = 'home';
-let currentManageTab = 'upload';
 let uploadedFiles = [];
 let sources = [];
 let presentations = [];
+let isLoggedIn = false;
+let currentUser = null;
+let generatedPresentationId = null;
 
 // API base URL
 const API_BASE = '/api';
@@ -17,12 +19,23 @@ function initializeApp() {
     // Set up event listeners
     setupEventListeners();
     
+    // Check for existing login state
+    checkLoginState();
+    
     // Load initial data
     loadSources();
     loadPresentations();
+}
+
+function checkLoginState() {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
     
-    // Set default manage tab
-    showManageTab('upload');
+    if (token && user) {
+        isLoggedIn = true;
+        currentUser = JSON.parse(user);
+        updateLoginState();
+    }
 }
 
 function setupEventListeners() {
@@ -30,6 +43,12 @@ function setupEventListeners() {
     const generateForm = document.getElementById('generateForm');
     if (generateForm) {
         generateForm.addEventListener('submit', handleGeneratePresentation);
+    }
+    
+    // Login form submission
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
     }
     
     // File upload
@@ -48,6 +67,13 @@ function setupEventListeners() {
 
 // Tab navigation functions
 function showTab(tabName) {
+    // Check if user is trying to access upload without login
+    if (tabName === 'upload' && !isLoggedIn) {
+        showNotification('Please login to access upload features', 'warning');
+        showTab('login');
+        return;
+    }
+    
     // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
@@ -118,7 +144,7 @@ async function handleGeneratePresentation(event) {
     }
     
     try {
-        showLoading('Generating presentation...');
+        showGenerationStatus();
         
         const response = await fetch(`${API_BASE}/presentations/generate`, {
             method: 'POST',
@@ -134,29 +160,19 @@ async function handleGeneratePresentation(event) {
         
         const result = await response.json();
         
+        // Store the generated presentation ID
+        generatedPresentationId = result.id || Date.now();
+        
+        // Show success message and enable download
+        showGeneratedInfo();
+        enableDownloadButton();
+        
         showNotification('Presentation generated successfully!', 'success');
-        
-        // Add to presentations list
-        presentations.unshift({
-            id: result.id || Date.now(),
-            title: formData.topic,
-            slides: formData.slideCount,
-            style: formData.style,
-            createdAt: new Date().toISOString(),
-            status: 'completed'
-        });
-        
-        // Refresh presentations list
-        loadPresentations();
-        
-        // Clear form
-        document.getElementById('generateForm').reset();
         
     } catch (error) {
         console.error('Error generating presentation:', error);
         showNotification('Failed to generate presentation. Please try again.', 'error');
-    } finally {
-        hideLoading();
+        hideGenerationStatus();
     }
 }
 
@@ -356,6 +372,158 @@ function renderPresentations() {
     `).join('');
 }
 
+// Generation status functions
+function showGenerationStatus() {
+    const statusDiv = document.getElementById('generationStatus');
+    const progressBar = document.getElementById('generationProgress');
+    
+    if (statusDiv) {
+        statusDiv.classList.remove('hidden');
+        
+        // Simulate progress
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += Math.random() * 20;
+            if (progress > 90) progress = 90;
+            progressBar.style.width = progress + '%';
+        }, 500);
+        
+        // Store interval for cleanup
+        statusDiv.dataset.interval = interval;
+    }
+}
+
+function hideGenerationStatus() {
+    const statusDiv = document.getElementById('generationStatus');
+    if (statusDiv) {
+        const interval = statusDiv.dataset.interval;
+        if (interval) {
+            clearInterval(interval);
+        }
+        statusDiv.classList.add('hidden');
+    }
+}
+
+function showGeneratedInfo() {
+    const infoDiv = document.getElementById('generatedInfo');
+    if (infoDiv) {
+        infoDiv.classList.remove('hidden');
+    }
+    hideGenerationStatus();
+}
+
+function enableDownloadButton() {
+    const downloadBtn = document.getElementById('downloadBtn');
+    if (downloadBtn) {
+        downloadBtn.disabled = false;
+        downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+}
+
+// Download presentation function
+async function downloadPresentation() {
+    if (!generatedPresentationId) {
+        showNotification('No presentation generated yet', 'error');
+        return;
+    }
+    
+    try {
+        showNotification('Preparing download...', 'info');
+        
+        const response = await fetch(`${API_BASE}/presentations/${generatedPresentationId}/download`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Download failed');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `presentation-${generatedPresentationId}.pptx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showNotification('Download started!', 'success');
+        
+    } catch (error) {
+        console.error('Download error:', error);
+        showNotification('Download failed. Please try again.', 'error');
+    }
+}
+
+// Login functionality
+async function handleLogin(event) {
+    event.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    if (!email || !password) {
+        showNotification('Please fill in all fields', 'error');
+        return;
+    }
+    
+    try {
+        showLoading('Logging in...');
+        
+        const response = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, password })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Login failed');
+        }
+        
+        const result = await response.json();
+        
+        // Store user data and token
+        isLoggedIn = true;
+        currentUser = result.user;
+        localStorage.setItem('token', result.token);
+        localStorage.setItem('user', JSON.stringify(result.user));
+        
+        // Update UI
+        updateLoginState();
+        showNotification('Login successful!', 'success');
+        showTab('home');
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        showNotification('Login failed. Please check your credentials.', 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function updateLoginState() {
+    const loginNav = document.getElementById('loginNav');
+    const uploadNav = document.getElementById('uploadNav');
+    
+    if (isLoggedIn) {
+        if (loginNav) loginNav.style.display = 'none';
+        if (uploadNav) uploadNav.style.display = 'block';
+    } else {
+        if (loginNav) loginNav.style.display = 'block';
+        if (uploadNav) uploadNav.style.display = 'none';
+    }
+}
+
+function showRegister() {
+    showNotification('Registration functionality coming soon!', 'info');
+}
+
 // Action functions
 function viewSource(id) {
     showNotification('View source functionality coming soon!', 'info');
@@ -371,10 +539,6 @@ function deleteSource(id) {
 
 function viewPresentation(id) {
     showNotification('View presentation functionality coming soon!', 'info');
-}
-
-function downloadPresentation(id) {
-    showNotification('Download functionality coming soon!', 'info');
 }
 
 function deletePresentation(id) {
