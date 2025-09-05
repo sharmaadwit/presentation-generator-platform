@@ -33,4 +33,14 @@ router.get('/users',
   asyncHandler(analyticsController.getUserActivityAnalytics)
 );
 
+// Get file upload/deletion logs
+router.get('/files',
+  asyncHandler(analyticsController.getFileLogs)
+);
+
+// Get source management analytics
+router.get('/source-management',
+  asyncHandler(analyticsController.getSourceManagementAnalytics)
+);
+
 export { router as analyticsRoutes };

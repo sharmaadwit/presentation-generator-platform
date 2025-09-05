@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import path from 'path';
 import fs from 'fs';
+import { logFileUpload, logFileDeletion } from '../utils/analyticsLogger';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -42,6 +43,20 @@ export const uploadController = {
           tags ? tags.split(',').map((t: string) => t.trim()) : [],
           'uploaded'
         ]
+      );
+
+      // Log the upload event
+      await logFileUpload(
+        req.user!.id,
+        uploadId,
+        req.file.originalname,
+        req.file.size,
+        req.file.mimetype,
+        industry,
+        tags ? tags.split(',').map((t: string) => t.trim()) : undefined,
+        req.sessionID,
+        req.ip,
+        req.get('User-Agent')
       );
 
       res.status(201).json({

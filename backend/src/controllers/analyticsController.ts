@@ -416,5 +416,192 @@ export const analyticsController = {
     } finally {
       client.release();
     }
+  },
+
+  // Get file upload/deletion logs
+  getFileLogs: async (req: AuthRequest, res: Response): Promise<void> => {
+    const client = await pool.connect();
+    
+    try {
+      const { timeRange = '30d', eventType = 'all' } = req.query;
+      
+      const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : timeRange === '90d' ? 90 : 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      // Build query based on event type filter
+      let eventFilter = '';
+      let queryParams = [startDate];
+      
+      if (eventType === 'upload') {
+        eventFilter = "AND ae.event_type IN ('file_uploaded', 'source_uploaded')";
+      } else if (eventType === 'delete') {
+        eventFilter = "AND ae.event_type IN ('file_deleted', 'source_deleted')";
+      } else if (eventType === 'all') {
+        eventFilter = "AND ae.event_type IN ('file_uploaded', 'source_uploaded', 'file_deleted', 'source_deleted')";
+      }
+
+      // Get file activity logs
+      const fileLogs = await client.query(`
+        SELECT 
+          ae.id,
+          ae.event_type,
+          ae.event_data,
+          ae.created_at,
+          u.name as user_name,
+          u.email as user_email,
+          u.regional_team,
+          u.department
+        FROM analytics_events ae
+        LEFT JOIN users u ON ae.user_id = u.id
+        WHERE ae.created_at >= $1 ${eventFilter}
+        ORDER BY ae.created_at DESC
+        LIMIT 100
+      `, queryParams);
+
+      // Get file activity summary
+      const fileSummary = await client.query(`
+        SELECT 
+          ae.event_type,
+          COUNT(*) as count,
+          COUNT(CASE WHEN ae.created_at >= $1 THEN 1 END) as recent_count,
+          SUM(CASE WHEN ae.event_data->>'file_size' IS NOT NULL 
+              THEN (ae.event_data->>'file_size')::BIGINT ELSE 0 END) as total_size_bytes
+        FROM analytics_events ae
+        WHERE ae.created_at >= $1 ${eventFilter}
+        GROUP BY ae.event_type
+        ORDER BY count DESC
+      `, queryParams);
+
+      // Get file activity by user
+      const userFileActivity = await client.query(`
+        SELECT 
+          u.name as user_name,
+          u.email as user_email,
+          u.regional_team,
+          u.department,
+          COUNT(CASE WHEN ae.event_type IN ('file_uploaded', 'source_uploaded') THEN 1 END) as uploads,
+          COUNT(CASE WHEN ae.event_type IN ('file_deleted', 'source_deleted') THEN 1 END) as deletions,
+          SUM(CASE WHEN ae.event_type IN ('file_uploaded', 'source_uploaded') 
+              AND ae.event_data->>'file_size' IS NOT NULL 
+              THEN (ae.event_data->>'file_size')::BIGINT ELSE 0 END) as total_upload_size,
+          MAX(ae.created_at) as last_activity
+        FROM analytics_events ae
+        LEFT JOIN users u ON ae.user_id = u.id
+        WHERE ae.created_at >= $1 ${eventFilter}
+        GROUP BY u.id, u.name, u.email, u.regional_team, u.department
+        ORDER BY uploads DESC
+        LIMIT 20
+      `, queryParams);
+
+      // Get file activity trends by day
+      const fileTrends = await client.query(`
+        SELECT 
+          DATE(ae.created_at) as date,
+          COUNT(CASE WHEN ae.event_type IN ('file_uploaded', 'source_uploaded') THEN 1 END) as uploads,
+          COUNT(CASE WHEN ae.event_type IN ('file_deleted', 'source_deleted') THEN 1 END) as deletions,
+          COUNT(DISTINCT ae.user_id) as unique_users
+        FROM analytics_events ae
+        WHERE ae.created_at >= $1 ${eventFilter}
+        GROUP BY DATE(ae.created_at)
+        ORDER BY date DESC
+        LIMIT 30
+      `, queryParams);
+
+      res.json({
+        fileLogs: fileLogs.rows,
+        fileSummary: fileSummary.rows,
+        userFileActivity: userFileActivity.rows,
+        fileTrends: fileTrends.rows,
+        timeRange,
+        eventType
+      });
+
+    } catch (error) {
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Get source management analytics
+  getSourceManagementAnalytics: async (req: AuthRequest, res: Response): Promise<void> => {
+    const client = await pool.connect();
+    
+    try {
+      const { timeRange = '30d' } = req.query;
+      
+      const days = timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : timeRange === '90d' ? 90 : 30;
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+
+      // Get source status breakdown
+      const sourceStatus = await client.query(`
+        SELECT 
+          ps.status,
+          COUNT(*) as count,
+          COUNT(CASE WHEN ps.created_at >= $1 THEN 1 END) as recent_count,
+          AVG(ps.relevance_score) as avg_relevance_score
+        FROM presentation_sources ps
+        GROUP BY ps.status
+        ORDER BY count DESC
+      `, [startDate]);
+
+      // Get source upload trends
+      const sourceUploadTrends = await client.query(`
+        SELECT 
+          DATE(ps.created_at) as date,
+          COUNT(*) as uploads,
+          COUNT(CASE WHEN ps.status = 'approved' THEN 1 END) as approved,
+          COUNT(CASE WHEN ps.status = 'pending' THEN 1 END) as pending,
+          COUNT(CASE WHEN ps.status = 'rejected' THEN 1 END) as rejected
+        FROM presentation_sources ps
+        WHERE ps.created_at >= $1
+        GROUP BY DATE(ps.created_at)
+        ORDER BY date DESC
+        LIMIT 30
+      `, [startDate]);
+
+      // Get source approval activity
+      const approvalActivity = await client.query(`
+        SELECT 
+          u.name as approver_name,
+          u.email as approver_email,
+          COUNT(*) as approvals,
+          COUNT(CASE WHEN ps.approved_at >= $1 THEN 1 END) as recent_approvals,
+          AVG(ps.relevance_score) as avg_approved_score
+        FROM presentation_sources ps
+        LEFT JOIN users u ON ps.approved_by = u.id
+        WHERE ps.status = 'approved' AND ps.approved_by IS NOT NULL
+        GROUP BY u.id, u.name, u.email
+        ORDER BY approvals DESC
+      `, [startDate]);
+
+      // Get source industry breakdown
+      const sourceIndustryBreakdown = await client.query(`
+        SELECT 
+          ps.industry,
+          COUNT(*) as total_sources,
+          COUNT(CASE WHEN ps.status = 'approved' THEN 1 END) as approved_sources,
+          COUNT(CASE WHEN ps.created_at >= $1 THEN 1 END) as recent_sources,
+          AVG(ps.relevance_score) as avg_relevance_score
+        FROM presentation_sources ps
+        GROUP BY ps.industry
+        ORDER BY total_sources DESC
+      `, [startDate]);
+
+      res.json({
+        sourceStatus: sourceStatus.rows,
+        sourceUploadTrends: sourceUploadTrends.rows,
+        approvalActivity: approvalActivity.rows,
+        sourceIndustryBreakdown: sourceIndustryBreakdown.rows,
+        timeRange
+      });
+
+    } catch (error) {
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 };

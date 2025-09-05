@@ -23,7 +23,7 @@ export const authenticateToken = async (
 
     // Dummy authentication - allow access with any token or no token
     req.user = {
-      id: 'dummy-user-123',
+      id: '00000000-0000-0000-0000-000000000001',
       email: 'dummy@example.com',
       name: 'Dummy User',
       subscriptionTier: 'free'
@@ -32,7 +32,7 @@ export const authenticateToken = async (
   } catch (error) {
     // Even if there's an error, allow access for dummy auth
     req.user = {
-      id: 'dummy-user-123',
+      id: '00000000-0000-0000-0000-000000000001',
       email: 'dummy@example.com',
       name: 'Dummy User',
       subscriptionTier: 'free'

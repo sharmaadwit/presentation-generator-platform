@@ -518,7 +518,7 @@ async function handleLogin(event) {
         // Always create a dummy user for any email/password
         isLoggedIn = true;
         currentUser = { 
-            id: 'dummy-user-123',
+            id: '00000000-0000-0000-0000-000000000001',
             email, 
             name: email.split('@')[0],
             subscriptionTier: 'free',
