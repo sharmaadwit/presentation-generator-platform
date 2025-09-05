@@ -53,6 +53,7 @@ COPY backend/ ./backend/
 WORKDIR /app/backend
 RUN npm ci
 RUN npm run build
+RUN echo "Backend build completed. Checking dist directory:" && ls -la dist/
 
 # Production image
 FROM node:18-alpine AS production
@@ -82,4 +83,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start the application
 WORKDIR /app/backend
-CMD ["sh", "-c", "echo 'Starting backend...' && echo 'Current directory:' && pwd && echo 'Files in directory:' && ls -la && echo 'Starting Node.js...' && node dist/index.js"]
+CMD ["sh", "-c", "echo 'Starting backend...' && echo 'Current directory:' && pwd && echo 'Files in directory:' && ls -la && echo 'Checking if dist/index.js exists:' && ls -la dist/ && echo 'Starting Node.js...' && node dist/index.js 2>&1 || echo 'Node.js failed to start'"]
