@@ -13,7 +13,6 @@ COPY frontend/src ./src
 COPY frontend/public ./public
 COPY frontend/tsconfig.json ./
 COPY frontend/tailwind.config.js ./
-COPY frontend/postcss.config.js ./
 
 # Install dependencies
 RUN npm install
