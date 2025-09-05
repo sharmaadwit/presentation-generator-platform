@@ -85,4 +85,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 
 # Start the application
 WORKDIR /app/backend
-CMD ["sh", "-c", "echo 'Starting backend...' && echo 'Current directory:' && pwd && echo 'Files in directory:' && ls -la && echo 'Checking if dist/index.js exists:' && ls -la dist/ && echo 'Starting Node.js...' && node dist/index.js 2>&1 || echo 'Node.js failed to start'"]
+CMD ["sh", "-c", "echo 'Starting backend...' && echo 'Current directory:' && pwd && echo 'Files in directory:' && ls -la && echo 'Checking if dist/index.js exists:' && ls -la dist/ && echo 'Node version:' && node --version && echo 'Testing if we can require the file:' && node -e 'console.log(\"Testing require...\"); try { require(\"./dist/index.js\"); console.log(\"Require successful\"); } catch(e) { console.error(\"Require failed:\", e.message); process.exit(1); }' && echo 'Starting Node.js...' && node dist/index.js"]
