@@ -6,11 +6,8 @@ WORKDIR /app
 ENV REACT_APP_API_URL=/api
 ENV REACT_APP_AI_SERVICE_URL=/ai-service
 
-# Copy only frontend package files first for better caching
+# Copy frontend package files and install dependencies
 COPY frontend/package*.json ./
-WORKDIR /app/frontend
-
-# Install dependencies
 RUN npm install
 
 # Copy frontend source code
@@ -22,10 +19,15 @@ RUN CI=false npm run build
 # Build backend
 FROM node:18-alpine AS backend-build
 WORKDIR /app
+
+# Copy backend package files and install dependencies
 COPY backend/package*.json ./
-WORKDIR /app/backend
 RUN npm install
+
+# Copy backend source code
 COPY backend/ ./
+
+# Build backend
 RUN npm run build
 
 # Production image
@@ -37,10 +39,10 @@ RUN apk add --no-cache curl
 WORKDIR /app
 
 # Copy built applications
-COPY --from=frontend-build /app/frontend/build ./frontend/build
-COPY --from=backend-build /app/backend/dist ./backend/dist
-COPY --from=backend-build /app/backend/node_modules ./backend/node_modules
-COPY --from=backend-build /app/backend/package*.json ./backend/
+COPY --from=frontend-build /app/build ./frontend/build
+COPY --from=backend-build /app/dist ./backend/dist
+COPY --from=backend-build /app/node_modules ./backend/node_modules
+COPY --from=backend-build /app/package*.json ./backend/
 
 # Create upload directory
 RUN mkdir -p /app/uploads
