@@ -354,9 +354,9 @@ export const uploadController = {
       await logFileDeletion(
         req.user!.id,
         fileId,
-        file.original_filename,
-        file.file_size || 0,
-        file.file_type || 'unknown',
+        file.title || 'Unknown file',
+        parseInt(file.metadata?.fileSize) || 0,
+        'presentation',
         'Admin deletion',
         undefined,
         req.ip,
