@@ -2,25 +2,30 @@
 FROM node:18-alpine AS frontend-build
 WORKDIR /app
 
-# Copy everything first to see what's available
-COPY . ./
-
-
 # Set environment variables for frontend build
 ENV REACT_APP_API_URL=/api
 ENV REACT_APP_AI_SERVICE_URL=/ai-service
 
-# Build frontend
+# Copy only frontend package files first for better caching
+COPY frontend/package*.json ./frontend/
 WORKDIR /app/frontend
-RUN npm install
-RUN npm run build
+
+# Install dependencies
+RUN npm ci
+
+# Copy frontend source code
+COPY frontend/ ./
+
+# Build frontend with optimizations
+RUN CI=false npm run build
 
 # Build backend
 FROM node:18-alpine AS backend-build
 WORKDIR /app
-COPY backend/ ./backend/
+COPY backend/package*.json ./backend/
 WORKDIR /app/backend
 RUN npm ci
+COPY backend/ ./
 RUN npm run build
 
 # Production image
@@ -37,8 +42,6 @@ COPY --from=backend-build /app/backend/dist ./backend/dist
 COPY --from=backend-build /app/backend/node_modules ./backend/node_modules
 COPY --from=backend-build /app/backend/package*.json ./backend/
 
-# No root package.json needed - skipping root dependencies
-
 # Create upload directory
 RUN mkdir -p /app/uploads
 
@@ -48,7 +51,6 @@ EXPOSE 5000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
   CMD curl -f http://localhost:5000/health || exit 1
-
 
 # Start the application
 WORKDIR /app/backend
