@@ -257,6 +257,21 @@ const initializeTables = async (): Promise<void> => {
       CREATE INDEX IF NOT EXISTS idx_user_activity_user_id ON user_activity(user_id);
     `);
 
+    // Create dummy user for testing/demo purposes
+    await client.query(`
+      INSERT INTO users (id, email, password_hash, name, subscription_tier, monthly_limit, user_type)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (id) DO NOTHING
+    `, [
+      '00000000-0000-0000-0000-000000000001',
+      'dummy@example.com',
+      '$2a$12$dummy.hash.for.testing.purposes.only',
+      'Dummy User',
+      'free',
+      5,
+      'user'
+    ]);
+
     console.log('✅ Database tables initialized');
   } catch (error) {
     console.error('❌ Failed to initialize database tables:', error);

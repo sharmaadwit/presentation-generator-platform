@@ -22,10 +22,44 @@ function initializeApp() {
     // Check for existing login state
     checkLoginState();
     
+    // Handle URL routing
+    handleURLRouting();
+    
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', handleURLRouting);
+    
     // Only load data if user is logged in
     if (isLoggedIn) {
         loadSources();
         loadPresentations();
+    }
+}
+
+function handleURLRouting() {
+    const path = window.location.pathname;
+    
+    // Handle specific routes
+    if (path === '/upload') {
+        if (!isLoggedIn) {
+            showNotification('Please login to access upload features', 'warning');
+            showTab('login');
+        } else {
+            showTab('upload');
+        }
+    } else if (path === '/dashboard') {
+        if (!isLoggedIn) {
+            showNotification('Please login to access dashboard', 'warning');
+            showTab('login');
+        } else {
+            showTab('dashboard');
+        }
+    } else if (path === '/generate') {
+        showTab('generate');
+    } else if (path === '/login') {
+        showTab('login');
+    } else {
+        // Default to home
+        showTab('home');
     }
 }
 
@@ -142,6 +176,13 @@ function showTab(tabName) {
         return;
     }
     
+    // Check if user is trying to access dashboard without login
+    if (tabName === 'dashboard' && !isLoggedIn) {
+        showNotification('Please login to access dashboard', 'warning');
+        showTab('login');
+        return;
+    }
+    
     // Hide all tabs
     document.querySelectorAll('.tab-content').forEach(tab => {
         tab.classList.remove('active');
@@ -154,8 +195,39 @@ function showTab(tabName) {
         currentTab = tabName;
     }
     
+    // Update URL based on tab
+    updateURL(tabName);
+    
     // Update navigation
     updateNavigation();
+}
+
+function updateURL(tabName) {
+    let newPath = '/';
+    
+    switch (tabName) {
+        case 'upload':
+            newPath = '/upload';
+            break;
+        case 'dashboard':
+            newPath = '/dashboard';
+            break;
+        case 'generate':
+            newPath = '/generate';
+            break;
+        case 'login':
+            newPath = '/login';
+            break;
+        case 'home':
+        default:
+            newPath = '/';
+            break;
+    }
+    
+    // Update URL without page reload
+    if (window.location.pathname !== newPath) {
+        window.history.pushState({}, '', newPath);
+    }
 }
 
 // Remove this function as it's no longer needed
@@ -562,11 +634,15 @@ async function handleLogin(event) {
 function updateLoginState() {
     const loginNav = document.getElementById('loginNav');
     const uploadNav = document.getElementById('uploadNav');
+    const dashboardNav = document.getElementById('dashboardNav');
+    const logoutBtn = document.getElementById('logoutBtn');
     const uploadCard = document.getElementById('uploadCard');
     
     if (isLoggedIn) {
         if (loginNav) loginNav.style.display = 'none';
         if (uploadNav) uploadNav.style.display = 'block';
+        if (dashboardNav) dashboardNav.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'block';
         
         // Update upload card for logged-in state
         if (uploadCard) {
@@ -579,6 +655,8 @@ function updateLoginState() {
     } else {
         if (loginNav) loginNav.style.display = 'block';
         if (uploadNav) uploadNav.style.display = 'none';
+        if (dashboardNav) dashboardNav.style.display = 'none';
+        if (logoutBtn) logoutBtn.style.display = 'none';
         
         // Update upload card for logged-out state
         if (uploadCard) {

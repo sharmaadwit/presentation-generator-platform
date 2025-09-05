@@ -44,10 +44,12 @@
                     <h1 class="text-2xl font-bold">SlideGen AI</h1>
                 </div>
                 <nav class="hidden md:flex space-x-6">
-                    <a href="#home" class="nav-link hover:text-blue-200 transition-colors" data-tab="home">Home</a>
-                    <a href="#generate" class="nav-link hover:text-blue-200 transition-colors" data-tab="generate">Generate & Download</a>
-                    <a href="#upload" class="nav-link hover:text-blue-200 transition-colors" data-tab="upload" id="uploadNav" style="display: none;">Upload & Analyze</a>
-                    <a href="#login" class="nav-link hover:text-blue-200 transition-colors" data-tab="login" id="loginNav">Login</a>
+                    <a href="/" class="nav-link hover:text-blue-200 transition-colors" data-tab="home">Home</a>
+                    <a href="/generate" class="nav-link hover:text-blue-200 transition-colors" data-tab="generate">Generate & Download</a>
+                    <a href="/upload" class="nav-link hover:text-blue-200 transition-colors" data-tab="upload" id="uploadNav" style="display: none;">Upload & Analyze</a>
+                    <a href="/dashboard" class="nav-link hover:text-blue-200 transition-colors" data-tab="dashboard" id="dashboardNav" style="display: none;">Dashboard</a>
+                    <a href="/login" class="nav-link hover:text-blue-200 transition-colors" data-tab="login" id="loginNav">Login</a>
+                    <button id="logoutBtn" class="nav-link hover:text-blue-200 transition-colors" style="display: none;">Logout</button>
                 </nav>
                 <button class="md:hidden text-white" id="mobileMenuBtn">
                     <i class="fas fa-bars text-xl"></i>
