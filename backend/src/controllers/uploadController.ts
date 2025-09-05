@@ -54,7 +54,7 @@ export const uploadController = {
         req.file.mimetype,
         industry,
         tags ? tags.split(',').map((t: string) => t.trim()) : undefined,
-        req.sessionID,
+        undefined, // sessionId
         req.ip,
         req.get('User-Agent')
       );

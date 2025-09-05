@@ -11,6 +11,8 @@ export interface LogEventData {
   tags?: string[];
   action?: string;
   reason?: string;
+  approvedBy?: string;
+  rejectedBy?: string;
   metadata?: Record<string, any>;
 }
 

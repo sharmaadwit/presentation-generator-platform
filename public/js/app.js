@@ -113,6 +113,24 @@ function setupEventListeners() {
     if (showRegisterBtn) {
         showRegisterBtn.addEventListener('click', showRegister);
     }
+    
+    // Feature cards
+    const generateCard = document.getElementById('generateCard');
+    if (generateCard) {
+        generateCard.addEventListener('click', () => showTab('generate'));
+    }
+    
+    const uploadCard = document.getElementById('uploadCard');
+    if (uploadCard) {
+        uploadCard.addEventListener('click', () => {
+            if (!isLoggedIn) {
+                showNotification('Please login to access upload features', 'warning');
+                showTab('login');
+            } else {
+                showTab('upload');
+            }
+        });
+    }
 }
 
 // Tab navigation functions
@@ -544,13 +562,32 @@ async function handleLogin(event) {
 function updateLoginState() {
     const loginNav = document.getElementById('loginNav');
     const uploadNav = document.getElementById('uploadNav');
+    const uploadCard = document.getElementById('uploadCard');
     
     if (isLoggedIn) {
         if (loginNav) loginNav.style.display = 'none';
         if (uploadNav) uploadNav.style.display = 'block';
+        
+        // Update upload card for logged-in state
+        if (uploadCard) {
+            const clickText = uploadCard.querySelector('.mt-4');
+            if (clickText) {
+                clickText.innerHTML = '<i class="fas fa-arrow-right mr-2"></i>Click to upload files';
+                clickText.className = 'mt-4 text-blue-600 font-medium';
+            }
+        }
     } else {
         if (loginNav) loginNav.style.display = 'block';
         if (uploadNav) uploadNav.style.display = 'none';
+        
+        // Update upload card for logged-out state
+        if (uploadCard) {
+            const clickText = uploadCard.querySelector('.mt-4');
+            if (clickText) {
+                clickText.innerHTML = '<i class="fas fa-lock mr-2"></i>Login required to access';
+                clickText.className = 'mt-4 text-orange-600 font-medium';
+            }
+        }
     }
 }
 
