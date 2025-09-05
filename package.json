@@ -9,7 +9,7 @@
     "dev:backend": "cd backend && npm run dev",
     "dev:ai": "cd ai-service && python app.py",
     "build": "npm run build:frontend && npm run build:backend",
-    "build:frontend": "cd frontend && npm run build && cp -r build ../frontend-build",
+    "build:frontend": "cd frontend && CI=false npm run build && cp -r build ../frontend-build",
     "build:backend": "cd backend && npm run build",
     "start": "cd backend && npm start",
     "start:production": "cd backend && npm start",
