@@ -3,6 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import { pool } from '../config/database';
 import { createError } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
+import { logSourceUpload, logSourceDeletion } from '../utils/analyticsLogger';
 
 export const sourceController = {
   // Upload presentation sources
@@ -33,7 +34,7 @@ export const sourceController = {
             sourceId,
             title || file.originalname,
             description || '',
-            industry,
+            industry || 'General', // Provide default industry if not specified
             tags ? tags.split(',').map((t: string) => t.trim()) : [],
             file.path,
             'uploaded',
@@ -41,6 +42,18 @@ export const sourceController = {
             'pending', // Requires approval
             req.user!.id
           ]
+        );
+
+        // Log the source upload event
+        await logSourceUpload(
+          req.user!.id,
+          sourceId,
+          title || file.originalname,
+          industry || 'General',
+          tags ? tags.split(',').map((t: string) => t.trim()) : undefined,
+          undefined, // sessionId
+          req.ip,
+          req.get('User-Agent')
         );
 
         uploadResults.push({
@@ -205,7 +218,7 @@ export const sourceController = {
         sourceId,
         title,
         description,
-        industry,
+        industry || 'General', // Provide default industry if not specified
         tags || [],
         filePath,
         sourceType,
