@@ -6,8 +6,14 @@ WORKDIR /app/frontend
 ENV REACT_APP_API_URL=/api
 ENV REACT_APP_AI_SERVICE_URL=/ai-service
 
-# Copy frontend directory with absolute path
-COPY frontend/ /app/frontend/
+# Copy frontend files individually to ensure they're available
+COPY frontend/package.json /app/frontend/
+COPY frontend/package-lock.json /app/frontend/
+COPY frontend/src/ /app/frontend/src/
+COPY frontend/public/ /app/frontend/public/
+COPY frontend/tsconfig.json /app/frontend/
+COPY frontend/tailwind.config.js /app/frontend/
+COPY frontend/postcss.config.js /app/frontend/
 
 # Debug: List all files to see what was copied
 RUN ls -la /app/frontend/
@@ -24,8 +30,11 @@ RUN CI=false npm run build
 FROM node:18-alpine AS backend-build
 WORKDIR /app/backend
 
-# Copy backend directory with absolute path
-COPY backend/ /app/backend/
+# Copy backend files individually to ensure they're available
+COPY backend/package.json /app/backend/
+COPY backend/package-lock.json /app/backend/
+COPY backend/src/ /app/backend/src/
+COPY backend/tsconfig.json /app/backend/
 
 # Install dependencies
 RUN npm install
