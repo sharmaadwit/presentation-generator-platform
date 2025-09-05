@@ -8,7 +8,11 @@ ENV REACT_APP_AI_SERVICE_URL=/ai-service
 
 # Copy frontend directory (excluding problematic files)
 COPY frontend/ ./
-RUN rm -f README.md postcss.config.js || true
+
+# Debug: List all files to see what was copied
+RUN ls -la
+RUN pwd
+RUN find . -name "package.json" -type f
 
 # Install dependencies
 RUN npm install
