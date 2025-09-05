@@ -41,17 +41,24 @@ function handleURLRouting() {
     // Handle specific routes
     if (path === '/upload') {
         if (!isLoggedIn) {
-            showNotification('Please login to access upload features', 'warning');
+            showNotification('Please login to access admin features', 'warning');
             showTab('login');
         } else {
             showTab('upload');
         }
     } else if (path === '/dashboard') {
         if (!isLoggedIn) {
-            showNotification('Please login to access dashboard', 'warning');
+            showNotification('Please login to access admin features', 'warning');
             showTab('login');
         } else {
             showTab('dashboard');
+        }
+    } else if (path === '/admin') {
+        if (!isLoggedIn) {
+            showNotification('Please login to access admin features', 'warning');
+            showTab('login');
+        } else {
+            showTab('adminDashboard');
         }
     } else if (path === '/generate') {
         showTab('generate');
@@ -153,17 +160,20 @@ function setupEventListeners() {
     if (generateCard) {
         generateCard.addEventListener('click', () => showTab('generate'));
     }
-    
+
+    const adminLoginCard = document.getElementById('adminLoginCard');
+    if (adminLoginCard) {
+        adminLoginCard.addEventListener('click', () => showTab('login'));
+    }
+
     const uploadCard = document.getElementById('uploadCard');
     if (uploadCard) {
-        uploadCard.addEventListener('click', () => {
-            if (!isLoggedIn) {
-                showNotification('Please login to access upload features', 'warning');
-                showTab('login');
-            } else {
-                showTab('upload');
-            }
-        });
+        uploadCard.addEventListener('click', () => showTab('upload'));
+    }
+
+    const analyticsCard = document.getElementById('analyticsCard');
+    if (analyticsCard) {
+        analyticsCard.addEventListener('click', () => showTab('dashboard'));
     }
 }
 
@@ -211,6 +221,9 @@ function updateURL(tabName) {
             break;
         case 'dashboard':
             newPath = '/dashboard';
+            break;
+        case 'adminDashboard':
+            newPath = '/admin';
             break;
         case 'generate':
             newPath = '/generate';
@@ -591,10 +604,10 @@ Generated on: ${new Date().toISOString()}`;
 async function handleLogin(event) {
     event.preventDefault();
     
-    const email = document.getElementById('email').value;
+    const userId = document.getElementById('userId').value;
     const password = document.getElementById('password').value;
     
-    if (!email || !password) {
+    if (!userId || !password) {
         showNotification('Please fill in all fields', 'error');
         return;
     }
@@ -605,23 +618,28 @@ async function handleLogin(event) {
         // Simulate login delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Always create a dummy user for any email/password
-        isLoggedIn = true;
-        currentUser = { 
-            id: '00000000-0000-0000-0000-000000000001',
-            email, 
-            name: email.split('@')[0],
-            subscriptionTier: 'free',
-            presentationsGenerated: 0,
-            monthlyLimit: 5
-        };
-        localStorage.setItem('token', 'dummy-token-' + Date.now());
-        localStorage.setItem('user', JSON.stringify(currentUser));
-        
-        // Update UI
-        updateLoginState();
-        showNotification('Login successful!', 'success');
-        showTab('home');
+        // Check admin credentials
+        if (userId === 'admin' && password === 'letmein123') {
+            isLoggedIn = true;
+            currentUser = {
+                id: '00000000-0000-0000-0000-000000000001',
+                userId: 'admin',
+                name: 'Admin User',
+                role: 'admin',
+                subscriptionTier: 'admin',
+                presentationsGenerated: 0,
+                monthlyLimit: 999
+            };
+            localStorage.setItem('token', 'admin-token-' + Date.now());
+            localStorage.setItem('user', JSON.stringify(currentUser));
+
+            // Update UI
+            updateLoginState();
+            showNotification('Admin login successful!', 'success');
+            showTab('adminDashboard');
+        } else {
+            showNotification('Invalid admin credentials. User ID: admin, Password: letmein123', 'error');
+        }
         
     } catch (error) {
         console.error('Login error:', error);
@@ -633,6 +651,7 @@ async function handleLogin(event) {
 
 function updateLoginState() {
     const loginNav = document.getElementById('loginNav');
+    const adminNav = document.getElementById('adminNav');
     const uploadNav = document.getElementById('uploadNav');
     const dashboardNav = document.getElementById('dashboardNav');
     const logoutBtn = document.getElementById('logoutBtn');
@@ -640,6 +659,7 @@ function updateLoginState() {
     
     if (isLoggedIn) {
         if (loginNav) loginNav.style.display = 'none';
+        if (adminNav) adminNav.style.display = 'block';
         if (uploadNav) uploadNav.style.display = 'block';
         if (dashboardNav) dashboardNav.style.display = 'block';
         if (logoutBtn) logoutBtn.style.display = 'block';
@@ -654,6 +674,7 @@ function updateLoginState() {
         }
     } else {
         if (loginNav) loginNav.style.display = 'block';
+        if (adminNav) adminNav.style.display = 'none';
         if (uploadNav) uploadNav.style.display = 'none';
         if (dashboardNav) dashboardNav.style.display = 'none';
         if (logoutBtn) logoutBtn.style.display = 'none';
