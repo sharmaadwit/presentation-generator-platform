@@ -7,7 +7,7 @@ ENV REACT_APP_API_URL=/api
 ENV REACT_APP_AI_SERVICE_URL=/ai-service
 
 # Copy only frontend package files first for better caching
-COPY frontend/package*.json ./frontend/
+COPY frontend/package*.json ./
 WORKDIR /app/frontend
 
 # Install dependencies
@@ -22,7 +22,7 @@ RUN CI=false npm run build
 # Build backend
 FROM node:18-alpine AS backend-build
 WORKDIR /app
-COPY backend/package*.json ./backend/
+COPY backend/package*.json ./
 WORKDIR /app/backend
 RUN npm install
 COPY backend/ ./
