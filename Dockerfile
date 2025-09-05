@@ -6,14 +6,14 @@ WORKDIR /app
 COPY . ./
 
 
+# Set environment variables for frontend build
+ENV REACT_APP_API_URL=/api
+ENV REACT_APP_AI_SERVICE_URL=/ai-service
+
 # Build frontend
 WORKDIR /app/frontend
 RUN npm install
 RUN npm run build
-
-# Set environment variables for frontend build
-ENV REACT_APP_API_URL=/api
-ENV REACT_APP_AI_SERVICE_URL=/ai-service
 
 # Build backend
 FROM node:18-alpine AS backend-build
