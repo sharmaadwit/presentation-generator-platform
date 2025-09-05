@@ -279,17 +279,17 @@ export const uploadController = {
           u.id,
           u.original_filename,
           u.file_size,
-          u.file_type,
+          u.mime_type as file_type,
           u.file_path,
-          u.upload_status,
+          u.status as upload_status,
           u.created_at,
-          u.updated_at,
+          u.processed_at as updated_at,
           u.industry,
           u.tags,
           u.user_id,
           us.name as user_name,
           us.email as user_email
-        FROM uploads u
+        FROM uploaded_presentations u
         LEFT JOIN users us ON u.user_id = us.id
         ORDER BY u.created_at DESC
       `);
@@ -327,7 +327,7 @@ export const uploadController = {
     try {
       // Get file details
       const fileResult = await client.query(
-        'SELECT * FROM uploads WHERE id = $1',
+        'SELECT * FROM uploaded_presentations WHERE id = $1',
         [fileId]
       );
 
@@ -364,7 +364,7 @@ export const uploadController = {
 
       // Delete from database
       await client.query(
-        'DELETE FROM uploads WHERE id = $1',
+        'DELETE FROM uploaded_presentations WHERE id = $1',
         [fileId]
       );
 
