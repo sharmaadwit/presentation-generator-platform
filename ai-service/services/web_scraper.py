@@ -23,34 +23,9 @@ class WebScraper:
         ]
         
     async def discover_presentations(self, query: str, industry: str, max_results: int = 20) -> List[Dict[str, Any]]:
-        """Discover relevant presentations from various sources"""
-        results = []
-        
-        try:
-            # For Railway deployment, we'll use a simplified approach
-            # that doesn't require complex web scraping
-            logger.info(f"Searching for presentations with query: {query}, industry: {industry}")
-            
-            # Return mock data for now - in production, you'd implement
-            # actual scraping logic here
-            mock_presentations = [
-                {
-                    "title": f"Sample {industry} Presentation for {query}",
-                    "url": "https://example.com/sample-presentation",
-                    "source": "example.com",
-                    "description": f"A sample {industry} presentation related to {query}",
-                    "slides_count": 15,
-                    "download_url": "https://example.com/sample-presentation.pptx",
-                    "relevanceScore": 0.8
-                }
-            ]
-            
-            results.extend(mock_presentations[:max_results])
-                
-        except Exception as e:
-            logger.error(f"Error in discover_presentations: {str(e)}")
-            
-        return results[:max_results]
+        """DISABLED: Web scraping is not permitted in controlled knowledge base system"""
+        logger.warning("Web scraping is disabled. This system only uses uploaded, approved content.")
+        return []
     
     async def _search_source(self, session: aiohttp.ClientSession, source: str, query: str, industry: str) -> List[Dict[str, Any]]:
         """Search a specific source for presentations"""

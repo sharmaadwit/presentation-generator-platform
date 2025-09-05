@@ -33,6 +33,49 @@ class ControlledSourceManager:
         if self.connection_pool:
             await self.connection_pool.close()
     
+    async def get_approved_sources(self, industry: str = None, tags: List[str] = None, limit: int = 20) -> List[Dict[str, Any]]:
+        """Get approved presentation sources with optional filtering"""
+        try:
+            if not self.connection_pool:
+                await self.connect()
+                
+            async with self.connection_pool.acquire() as conn:
+                # Build query with optional filters
+                where_conditions = ["ps.status = 'approved'"]
+                params = []
+                param_count = 0
+                
+                if industry:
+                    param_count += 1
+                    where_conditions.append(f"ps.industry = ${param_count}")
+                    params.append(industry)
+                
+                if tags:
+                    param_count += 1
+                    where_conditions.append(f"ps.tags && ${param_count}")
+                    params.append(tags)
+                
+                where_clause = " AND ".join(where_conditions)
+                params.append(limit)
+                
+                query = f"""
+                    SELECT ps.*, 
+                           COUNT(ss.id) as slide_count
+                    FROM presentation_sources ps
+                    LEFT JOIN source_slides ss ON ps.id = ss.source_id
+                    WHERE {where_clause}
+                    GROUP BY ps.id
+                    ORDER BY ps.relevance_score DESC, ps.created_at DESC
+                    LIMIT ${param_count + 1}
+                """
+                
+                rows = await conn.fetch(query, *params)
+                return [dict(row) for row in rows]
+                
+        except Exception as e:
+            logger.error(f"Error getting approved sources: {e}")
+            return []
+
     async def get_approved_sources_for_industry(self, industry: str) -> List[Dict[str, Any]]:
         """Get all approved presentation sources for a specific industry"""
         try:

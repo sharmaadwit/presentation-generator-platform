@@ -10,6 +10,7 @@ from services.presentation_generator import PresentationGenerator
 from services.web_scraper import WebScraper
 from services.slide_analyzer import SlideAnalyzer
 from services.content_matcher import ContentMatcher
+from services.controlled_source_manager import ControlledSourceManager
 from models.database import DatabaseManager
 
 # Load environment variables
@@ -36,6 +37,7 @@ web_scraper = WebScraper()
 slide_analyzer = SlideAnalyzer()
 content_matcher = ContentMatcher()
 presentation_generator = PresentationGenerator()
+controlled_source_manager = ControlledSourceManager()
 
 # Pydantic models
 class PresentationRequest(BaseModel):
@@ -94,27 +96,53 @@ async def generate_presentation(request: PresentationRequest, background_tasks: 
 # Discover presentations endpoint
 @app.post("/scraping/discover")
 async def discover_presentations(request: ScrapingRequest):
-    try:
-        results = await web_scraper.discover_presentations(
-            query=request.query,
-            industry=request.industry,
-            max_results=request.maxResults
-        )
-        return {"results": results}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    """DISABLED: Web scraping is not permitted in this controlled knowledge base system"""
+    return {
+        "results": [],
+        "message": "Web scraping is disabled. This system only uses uploaded, approved content from the controlled knowledge base.",
+        "warning": "Please upload relevant presentations to expand the knowledge base instead of requesting external content."
+    }
 
 # Extract slides endpoint
 @app.post("/scraping/extract")
 async def extract_slides(request: SlideExtractionRequest):
+    """DISABLED: External URL extraction is not permitted in this controlled knowledge base system"""
+    return {
+        "slides": [],
+        "message": "External URL extraction is disabled. This system only processes uploaded files from the controlled knowledge base.",
+        "warning": "Please upload presentation files directly instead of providing external URLs."
+    }
+
+# Upload processing endpoint
+@app.post("/upload/process")
+async def process_uploaded_file(request: dict):
+    """Process uploaded presentation file and extract slides for knowledge base"""
     try:
-        slides = await slide_analyzer.extract_slides_from_urls(
-            urls=request.urls,
-            presentation_id=request.presentationId
-        )
-        return {"slides": slides}
+        upload_id = request.get('uploadId')
+        file_path = request.get('filePath')
+        mime_type = request.get('mimeType')
+        title = request.get('title', 'Untitled')
+        description = request.get('description', '')
+        industry = request.get('industry', 'General')
+        tags = request.get('tags', [])
+        
+        if not upload_id or not file_path:
+            raise HTTPException(status_code=400, detail="Missing required fields: uploadId and filePath")
+        
+        # Extract slides from uploaded file
+        slides = await controlled_source_manager.extract_slides_from_source(upload_id, file_path)
+        
+        return {
+            "message": "File processed successfully",
+            "slides": slides,
+            "totalSlides": len(slides),
+            "uploadId": upload_id,
+            "title": title,
+            "industry": industry
+        }
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to process uploaded file: {str(e)}")
 
 # Get generation progress
 @app.get("/progress/{presentation_id}")
@@ -127,51 +155,66 @@ async def get_progress(presentation_id: str):
 
 # Main generation function
 async def generate_presentation_async(presentation_id: str, request_data: Dict[str, Any]):
-    """Main async function to handle presentation generation"""
+    """Main async function to handle presentation generation using ONLY uploaded content"""
     try:
         # Update progress: Discovering
         await db_manager.update_progress(
             presentation_id,
             "discovering",
             10,
-            "Searching for relevant presentations..."
+            "Searching approved knowledge base for relevant content..."
         )
         
-        # Step 1: Discover relevant presentations
+        # Step 1: Get approved sources from knowledge base (NO WEB SCRAPING)
         search_query = f"{request_data['useCase']} {request_data['industry']} {request_data['customer']}"
-        discovered_presentations = await web_scraper.discover_presentations(
-            query=search_query,
+        approved_sources = await controlled_source_manager.get_approved_sources(
             industry=request_data['industry'],
-            max_results=20
+            tags=request_data.get('tags', []),
+            limit=20
         )
+        
+        if not approved_sources:
+            await db_manager.update_progress(
+                presentation_id,
+                "failed",
+                0,
+                "No approved content found in knowledge base. Please upload relevant presentations first."
+            )
+            return
         
         # Update progress: Extracting
         await db_manager.update_progress(
             presentation_id,
             "extracting",
             30,
-            f"Found {len(discovered_presentations)} presentations. Extracting slides..."
+            f"Found {len(approved_sources)} approved sources. Extracting slides..."
         )
         
-        # Step 2: Extract slides from discovered presentations
+        # Step 2: Extract slides from approved uploaded sources only
         all_slides = []
-        for presentation in discovered_presentations[:10]:  # Limit to top 10
+        for source in approved_sources[:10]:  # Limit to top 10
             try:
-                slides = await slide_analyzer.extract_slides_from_url(
-                    presentation['url'],
-                    presentation_id
-                )
+                slides = await controlled_source_manager.get_source_slides(source['id'])
                 all_slides.extend(slides)
             except Exception as e:
-                print(f"Failed to extract slides from {presentation['url']}: {e}")
+                print(f"Failed to extract slides from approved source {source['id']}: {e}")
                 continue
+        
+        if not all_slides:
+            await db_manager.update_progress(
+                presentation_id,
+                "failed",
+                0,
+                "No slides found in approved sources. Please ensure presentations are properly processed."
+            )
+            return
         
         # Update progress: Analyzing
         await db_manager.update_progress(
             presentation_id,
             "analyzing",
             60,
-            f"Analyzing {len(all_slides)} slides for relevance..."
+            f"Analyzing {len(all_slides)} slides from approved knowledge base..."
         )
         
         # Step 3: Analyze and match slides

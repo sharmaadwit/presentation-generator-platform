@@ -38,26 +38,29 @@ class ContentMatcher:
         target_audience: Optional[str] = None,
         style: str = "professional"
     ) -> List[Dict[str, Any]]:
-        """Match slides to user requirements using AI and ML"""
+        """Match slides to user requirements using AI and ML with cost optimization"""
         
         if not slides:
             return []
         
         try:
-            # Step 1: Use AI to analyze and score slides
+            # Step 1: Use AI to analyze and score slides (minimal cost)
             ai_scored_slides = await self._ai_score_slides(
                 slides, use_case, customer, industry, target_audience, style
             )
             
-            # Step 2: Use ML similarity matching
+            # Step 2: Use ML similarity matching (no cost)
             ml_scored_slides = self._ml_score_slides(
                 slides, use_case, customer, industry
             )
             
-            # Step 3: Combine scores and select best slides
-            final_slides = self._combine_scores_and_select(
+            # Step 3: Combine scores and categorize by confidence
+            categorized_slides = self._categorize_slides_by_confidence(
                 ai_scored_slides, ml_scored_slides, use_case, style
             )
+            
+            # Step 4: Select slides based on confidence levels
+            final_slides = self._select_slides_optimized(categorized_slides)
             
             return final_slides
             
@@ -125,17 +128,25 @@ class ContentMatcher:
                 ai_scores = [{"index": i, "score": 0.5, "reason": "AI analysis unavailable"} for i in range(len(slides))]
             else:
                 prompt = f"""
+                SYSTEM INSTRUCTION: You are analyzing slides from a CONTROLLED KNOWLEDGE BASE only.
+                These slides come from approved, uploaded presentations. Do NOT reference external content.
+                
                 Analyze the following slides for relevance to the given context.
                 Rate each slide from 0.0 to 1.0 based on how well it matches the requirements.
                 Consider content relevance, visual appeal, and appropriateness for the target audience.
                 
                 Context: {context}
                 
+                IMPORTANT: All content comes from approved uploaded sources in the knowledge base.
+                Do not suggest external resources or web content.
+                
                 Slides to analyze:
                 {chr(10).join([f"Slide {i+1}: {text}" for i, text in enumerate(slide_texts)])}
                 
                 Return a JSON array with scores for each slide in the format:
                 [{{"index": 0, "score": 0.8, "reason": "Highly relevant to use case"}}, ...]
+                
+                REMEMBER: Only use content from the approved knowledge base. No external references.
                 """
                 
                 try:
@@ -205,51 +216,107 @@ class ContentMatcher:
             logger.error(f"Error in ML scoring: {e}")
             return slides
     
-    def _combine_scores_and_select(
+    def _categorize_slides_by_confidence(
         self,
         ai_scored_slides: List[Dict[str, Any]],
         ml_scored_slides: List[Dict[str, Any]],
         use_case: str,
         style: str
-    ) -> List[Dict[str, Any]]:
-        """Combine AI and ML scores and select best slides"""
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """Categorize slides by confidence level for cost optimization"""
         
-        try:
-            # Create a mapping of slide IDs to scores
-            slide_scores = {}
+        # Create a mapping of slide IDs to scores
+        slide_scores = {}
+        
+        # Add AI scores
+        for slide in ai_scored_slides:
+            slide_id = slide.get('id', '')
+            if slide_id not in slide_scores:
+                slide_scores[slide_id] = {'ai_score': 0, 'ml_score': 0, 'slide': slide}
+            slide_scores[slide_id]['ai_score'] = slide.get('ai_score', 0)
+            slide_scores[slide_id]['slide'] = slide
+        
+        # Add ML scores
+        for slide in ml_scored_slides:
+            slide_id = slide.get('id', '')
+            if slide_id not in slide_scores:
+                slide_scores[slide_id] = {'ai_score': 0, 'ml_score': 0, 'slide': slide}
+            slide_scores[slide_id]['ml_score'] = slide.get('ml_score', 0)
+            slide_scores[slide_id]['slide'] = slide
+        
+        # Calculate combined scores and categorize
+        high_confidence = []  # > 0.8 - Copy exact slides
+        medium_confidence = []  # 0.6-0.8 - Minor AI enhancement
+        low_confidence = []  # < 0.6 - Full AI generation
+        
+        for slide_id, scores in slide_scores.items():
+            ai_score = scores['ai_score']
+            ml_score = scores['ml_score']
             
-            for slide in ai_scored_slides:
-                slide_id = slide.get('id', '')
-                ai_score = slide.get('ai_score', 0.5)
-                ml_score = slide.get('ml_score', 0.5)
-                
-                # Weighted combination (70% AI, 30% ML)
-                combined_score = (ai_score * 0.7) + (ml_score * 0.3)
-                
-                slide_scores[slide_id] = {
-                    'slide': slide,
-                    'ai_score': ai_score,
-                    'ml_score': ml_score,
-                    'combined_score': combined_score
-                }
+            # Weighted combination (AI: 70%, ML: 30%)
+            combined_score = (ai_score * 0.7) + (ml_score * 0.3)
+            slide = scores['slide']
+            slide['combined_score'] = combined_score
+            slide['confidence_level'] = self._get_confidence_level(combined_score)
             
-            # Sort by combined score
-            sorted_slides = sorted(
-                slide_scores.values(),
-                key=lambda x: x['combined_score'],
-                reverse=True
-            )
-            
-            # Select slides based on use case and style
-            selected_slides = self._select_slides_by_requirements(
-                sorted_slides, use_case, style
-            )
-            
-            return [s['slide'] for s in selected_slides]
-            
-        except Exception as e:
-            logger.error(f"Error combining scores: {e}")
-            return ai_scored_slides[:10]
+            if combined_score >= 0.8:
+                high_confidence.append(slide)
+            elif combined_score >= 0.6:
+                medium_confidence.append(slide)
+            else:
+                low_confidence.append(slide)
+        
+        return {
+            'high_confidence': sorted(high_confidence, key=lambda x: x['combined_score'], reverse=True),
+            'medium_confidence': sorted(medium_confidence, key=lambda x: x['combined_score'], reverse=True),
+            'low_confidence': sorted(low_confidence, key=lambda x: x['combined_score'], reverse=True)
+        }
+    
+    def _get_confidence_level(self, score: float) -> str:
+        """Get confidence level based on score"""
+        if score >= 0.8:
+            return 'high'
+        elif score >= 0.6:
+            return 'medium'
+        else:
+            return 'low'
+    
+    def _select_slides_optimized(self, categorized_slides: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        """Select slides using cost-optimized approach"""
+        
+        selected_slides = []
+        
+        # Priority 1: High confidence slides (copy exact - no AI cost)
+        high_conf = categorized_slides['high_confidence']
+        for slide in high_conf[:8]:  # Take up to 8 high confidence slides
+            slide['action'] = 'copy_exact'
+            slide['cost'] = 0
+            selected_slides.append(slide)
+        
+        # Priority 2: Medium confidence slides (minor AI enhancement - low cost)
+        medium_conf = categorized_slides['medium_confidence']
+        for slide in medium_conf[:5]:  # Take up to 5 medium confidence slides
+            slide['action'] = 'minor_enhancement'
+            slide['cost'] = 'low'
+            selected_slides.append(slide)
+        
+        # Priority 3: Low confidence slides (only if we need more content - high cost)
+        low_conf = categorized_slides['low_confidence']
+        remaining_slots = 15 - len(selected_slides)  # Max 15 slides total
+        
+        if remaining_slots > 0 and len(selected_slides) < 10:  # Only if we need more content
+            for slide in low_conf[:remaining_slots]:
+                slide['action'] = 'full_generation'
+                slide['cost'] = 'high'
+                selected_slides.append(slide)
+        
+        # Sort by confidence and action priority
+        selected_slides.sort(key=lambda x: (
+            x['combined_score'],  # Higher score first
+            {'copy_exact': 0, 'minor_enhancement': 1, 'full_generation': 2}[x['action']]  # Lower cost first
+        ), reverse=True)
+        
+        return selected_slides[:15]  # Limit to 15 slides max
     
     def _select_slides_by_requirements(
         self,
