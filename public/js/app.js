@@ -509,22 +509,23 @@ async function handleLogin(event) {
         return;
     }
     
-    // Check for demo password
-    if (password !== 'letmein123') {
-        showNotification('Invalid password. Use: letmein123', 'error');
-        return;
-    }
-    
     try {
         showLoading('Logging in...');
         
         // Simulate login delay
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Store user data and token
+        // Always create a dummy user for any email/password
         isLoggedIn = true;
-        currentUser = { email, name: email.split('@')[0] };
-        localStorage.setItem('token', 'demo-token-' + Date.now());
+        currentUser = { 
+            id: 'dummy-user-123',
+            email, 
+            name: email.split('@')[0],
+            subscriptionTier: 'free',
+            presentationsGenerated: 0,
+            monthlyLimit: 5
+        };
+        localStorage.setItem('token', 'dummy-token-' + Date.now());
         localStorage.setItem('user', JSON.stringify(currentUser));
         
         // Update UI
