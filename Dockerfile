@@ -52,8 +52,10 @@ WORKDIR /app
 COPY backend/ ./backend/
 WORKDIR /app/backend
 RUN npm ci
-RUN npm run build
+RUN echo "Running TypeScript build..." && npm run build
 RUN echo "Backend build completed. Checking dist directory:" && ls -la dist/
+RUN echo "Checking for index.js:" && ls -la dist/index.js || echo "index.js not found"
+RUN echo "All files in dist:" && find dist -type f
 
 # Production image
 FROM node:18-alpine AS production
