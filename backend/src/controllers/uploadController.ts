@@ -354,6 +354,8 @@ export const uploadController = {
         req.user!.id,
         fileId,
         file.original_filename,
+        file.file_size || 0,
+        file.file_type || 'unknown',
         'Admin deletion',
         undefined,
         req.ip,
