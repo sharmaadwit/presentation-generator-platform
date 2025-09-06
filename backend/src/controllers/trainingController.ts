@@ -205,14 +205,23 @@ async function startTrainingProcess(trainingId: string) {
       `SELECT ps.*, se.id as embedding_id 
        FROM presentation_sources ps 
        LEFT JOIN slide_embeddings se ON ps.id = se.source_id 
-       WHERE ps.source_type = 'uploaded' AND ps.status = 'approved'
+       WHERE ps.status = 'approved'
        ORDER BY ps.created_at ASC`
     );
     
     const files = filesResult.rows;
     const totalFiles = files.length;
     
+    console.log(`Training process started for session ${trainingId}`);
+    console.log(`Found ${totalFiles} files to process:`, files.map(f => ({ id: f.id, title: f.title, status: f.status })));
+    
     if (totalFiles === 0) {
+      console.log('No files found for training - checking all presentation_sources...');
+      
+      // Debug: Check what files exist
+      const debugResult = await client.query('SELECT id, title, status, source_type FROM presentation_sources ORDER BY created_at DESC LIMIT 10');
+      console.log('All presentation_sources:', debugResult.rows);
+      
       await updateTrainingProgress(client, trainingId, 100, 'No files to train', 'completed');
       await client.query(
         'UPDATE training_sessions SET status = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2',
