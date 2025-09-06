@@ -302,6 +302,9 @@ async def generate_with_embeddings(presentation_id: str, request_data: Dict[str,
         search_query = f"{request_data['useCase']} {request_data['industry']} {request_data['customer']}"
         query_embedding = generate_simple_embedding(search_query)
         
+        print(f"🔍 SEARCH QUERY: {search_query}")
+        print(f"📊 QUERY EMBEDDING DIMENSIONS: {len(query_embedding)}")
+        
         # Find similar slides using vector similarity
         similar_slides = await find_similar_slides(
             query_embedding,
@@ -309,7 +312,10 @@ async def generate_with_embeddings(presentation_id: str, request_data: Dict[str,
             limit=20
         )
         
+        print(f"🎯 FOUND {len(similar_slides)} SIMILAR SLIDES")
+        
         if not similar_slides:
+            print("❌ NO SIMILAR SLIDES FOUND")
             await db_manager.update_progress(
                 presentation_id,
                 "failed",
@@ -317,6 +323,18 @@ async def generate_with_embeddings(presentation_id: str, request_data: Dict[str,
                 "No relevant content found in trained knowledge base. Please train the system first."
             )
             return
+        
+        # Log each slide found with details
+        for i, slide in enumerate(similar_slides):
+            print(f"📄 SLIDE {i+1}:")
+            print(f"   - ID: {slide.get('id', 'N/A')}")
+            print(f"   - Type: {slide.get('slide_type', 'N/A')}")
+            print(f"   - Relevance Score: {slide.get('relevance_score', 'N/A')}")
+            print(f"   - Source: {slide.get('source_title', 'N/A')}")
+            print(f"   - Industry: {slide.get('industry', 'N/A')}")
+            print(f"   - Action: {slide.get('action', 'N/A')}")
+            print(f"   - Content Preview: {slide.get('content', 'N/A')[:100]}...")
+            print()
         
         # Update progress: Matching
         await db_manager.update_progress(
@@ -337,7 +355,29 @@ async def generate_with_embeddings(presentation_id: str, request_data: Dict[str,
             f"Generating presentation with {len(matched_slides)} selected slides..."
         )
         
+        # Log action breakdown
+        action_counts = {}
+        for slide in matched_slides:
+            action = slide.get('action', 'copy_exact')
+            action_counts[action] = action_counts.get(action, 0) + 1
+        
+        print(f"📊 ACTION BREAKDOWN:")
+        for action, count in action_counts.items():
+            print(f"   - {action}: {count} slides")
+        
+        # Calculate estimated AI token usage
+        copy_exact_count = action_counts.get('copy_exact', 0)
+        minor_enhancement_count = action_counts.get('minor_enhancement', 0)
+        full_generation_count = action_counts.get('full_generation', 0)
+        
+        estimated_tokens = (minor_enhancement_count * 50) + (full_generation_count * 200)
+        print(f"💰 ESTIMATED AI TOKEN USAGE: {estimated_tokens} tokens")
+        print(f"   - Copy Exact: {copy_exact_count} slides (0 tokens)")
+        print(f"   - Minor Enhancement: {minor_enhancement_count} slides (~{minor_enhancement_count * 50} tokens)")
+        print(f"   - Full Generation: {full_generation_count} slides (~{full_generation_count * 200} tokens)")
+        
         # Generate final presentation
+        print(f"🚀 GENERATING PRESENTATION...")
         presentation_data = await presentation_generator.generate_presentation(
             slides=matched_slides,
             presentation_id=presentation_id,

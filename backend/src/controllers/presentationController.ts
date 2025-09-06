@@ -363,9 +363,16 @@ const pollForCompletion = async (presentationId: string): Promise<void> => {
       const progressResponse = await axios.get(`${AI_SERVICE_URL}/progress/${presentationId}`);
       const progress = progressResponse.data;
       
-      console.log(`Polling attempt ${attempts}:`, progress);
+      console.log(`🔄 POLLING ATTEMPT ${attempts}/${maxAttempts}:`);
+      console.log(`   - Stage: ${progress.stage}`);
+      console.log(`   - Progress: ${progress.progress}%`);
+      console.log(`   - Message: ${progress.message}`);
 
       if (progress.stage === 'completed') {
+        console.log(`✅ PRESENTATION COMPLETED: ${presentationId}`);
+        console.log(`   - Final Progress: ${progress.progress}%`);
+        console.log(`   - Final Message: ${progress.message}`);
+        
         // Update presentation status to completed
         const client = await pool.connect();
         try {
@@ -373,11 +380,15 @@ const pollForCompletion = async (presentationId: string): Promise<void> => {
             'UPDATE presentations SET status = $1, download_url = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
             ['completed', `/api/presentations/${presentationId}/download`, presentationId]
           );
+          console.log(`✅ Database updated - Presentation ready for download`);
         } finally {
           client.release();
         }
         return;
       } else if (progress.stage === 'failed') {
+        console.log(`❌ PRESENTATION FAILED: ${presentationId}`);
+        console.log(`   - Error Message: ${progress.message}`);
+        
         // Update presentation status to failed
         const client = await pool.connect();
         try {
