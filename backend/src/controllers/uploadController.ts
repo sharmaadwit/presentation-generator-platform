@@ -352,9 +352,20 @@ export const uploadController = {
 
       // Resolve file path - handle both relative and absolute paths
       let filePath = file.file_path;
-      if (!path.isAbsolute(filePath)) {
-        // If it's a relative path, make it absolute from the project root
+      
+      console.log(`🔍 Original file path: ${filePath}`);
+      console.log(`📁 Current working directory: ${process.cwd()}`);
+      console.log(`📁 Is absolute path: ${path.isAbsolute(filePath)}`);
+
+      // If it's an absolute path that starts with /app/uploads, try relative to backend
+      if (filePath.startsWith('/app/uploads/')) {
+        const relativePath = filePath.replace('/app/uploads/', '');
+        filePath = path.resolve(process.cwd(), 'uploads', relativePath);
+        console.log(`🔄 Converted absolute path to relative: ${filePath}`);
+      } else if (!path.isAbsolute(filePath)) {
+        // If it's a relative path, make it absolute from the current working directory
         filePath = path.resolve(process.cwd(), filePath);
+        console.log(`🔄 Resolved relative path: ${filePath}`);
       }
 
       console.log(`🔍 Looking for file at: ${filePath}`);
@@ -364,12 +375,16 @@ export const uploadController = {
       if (!fs.existsSync(filePath)) {
         console.log(`🔄 Trying alternative paths...`);
         
+        // Extract just the filename from the original path
+        const fileName = path.basename(file.file_path);
+        console.log(`📄 Filename: ${fileName}`);
+        
         // Try with different base directories
         const alternativePaths = [
-          path.resolve('/app', file.file_path), // Railway production path
-          path.resolve('/app/backend', file.file_path), // Backend subdirectory
-          path.resolve(process.cwd(), 'backend', file.file_path), // Local backend path
-          path.resolve(process.cwd(), '..', 'backend', file.file_path), // Parent backend path
+          path.resolve(process.cwd(), 'uploads', fileName), // Backend/uploads/filename
+          path.resolve(process.cwd(), '..', 'uploads', fileName), // Parent/uploads/filename
+          path.resolve('/app', 'uploads', fileName), // /app/uploads/filename
+          path.resolve('/app', 'backend', 'uploads', fileName), // /app/backend/uploads/filename
         ];
 
         for (const altPath of alternativePaths) {
@@ -386,14 +401,22 @@ export const uploadController = {
           '/app/uploads',
           '/app/backend/uploads',
           path.resolve(process.cwd(), 'uploads'),
-          path.resolve(process.cwd(), 'backend/uploads'),
+          path.resolve(process.cwd(), '..', 'uploads'),
         ];
 
         for (const uploadDir of uploadDirs) {
           if (fs.existsSync(uploadDir)) {
             console.log(`📂 Checking upload directory: ${uploadDir}`);
             const files = fs.readdirSync(uploadDir);
-            console.log(`📋 Files in ${uploadDir}:`, files.slice(0, 5)); // Show first 5 files
+            console.log(`📋 Files in ${uploadDir}:`, files.slice(0, 10)); // Show first 10 files
+            
+            // Check if our target file is in this directory
+            if (files.includes(fileName)) {
+              const foundPath = path.resolve(uploadDir, fileName);
+              console.log(`✅ Found target file in ${uploadDir}: ${foundPath}`);
+              filePath = foundPath;
+              break;
+            }
           }
         }
       }
