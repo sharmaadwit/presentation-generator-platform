@@ -15,12 +15,16 @@ class ContentMatcher:
         # Initialize OpenAI client
         openai_key = os.getenv('OPENAI_API_KEY')
         
-        if not openai_key:
-            logger.error("OPENAI_API_KEY not found. AI features will be disabled.")
+        if not openai_key or openai_key == "sk-dummy-key":
+            logger.warning("OPENAI_API_KEY not found or is dummy. AI features will be disabled.")
             self.openai_client = None
         else:
-            self.openai_client = openai.OpenAI(api_key=openai_key)
-            logger.info("OpenAI client initialized successfully with GPT-5 low thinking mode")
+            try:
+                self.openai_client = openai.OpenAI(api_key=openai_key)
+                logger.info("OpenAI client initialized successfully")
+            except Exception as e:
+                logger.error(f"Failed to initialize OpenAI client: {e}")
+                self.openai_client = None
         
         # Initialize text vectorizer for similarity matching
         self.vectorizer = TfidfVectorizer(

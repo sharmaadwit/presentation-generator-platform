@@ -39,6 +39,26 @@ content_matcher = ContentMatcher()
 presentation_generator = PresentationGenerator()
 controlled_source_manager = ControlledSourceManager()
 
+# Database connection startup event
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database connection on startup"""
+    try:
+        await db_manager.connect()
+        print("✅ Database connected successfully")
+    except Exception as e:
+        print(f"❌ Database connection failed: {e}")
+        # Don't fail startup, but log the error
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close database connection on shutdown"""
+    try:
+        await db_manager.close()
+        print("✅ Database connection closed")
+    except Exception as e:
+        print(f"❌ Error closing database: {e}")
+
 # Pydantic models
 class PresentationRequest(BaseModel):
     presentationId: str

@@ -34,6 +34,10 @@ class DatabaseManager:
     
     async def query(self, query: str, params: List[Any] = None):
         """Execute a query and return results"""
+        if not self.connection_pool:
+            logger.error("Database not connected")
+            return []
+        
         try:
             async with self.connection_pool.acquire() as conn:
                 if params:
@@ -57,6 +61,10 @@ class DatabaseManager:
     ):
         """Update generation progress for a presentation"""
         
+        if not self.connection_pool:
+            logger.error("Database not connected - cannot update progress")
+            return
+        
         try:
             async with self.connection_pool.acquire() as conn:
                 await conn.execute("""
@@ -70,6 +78,16 @@ class DatabaseManager:
     
     async def get_generation_progress(self, presentation_id: str) -> Dict[str, Any]:
         """Get latest generation progress for a presentation"""
+        
+        if not self.connection_pool:
+            logger.error("Database not connected - cannot get progress")
+            return {
+                'stage': 'error',
+                'progress': 0,
+                'message': 'Database not connected',
+                'estimatedTimeRemaining': None,
+                'timestamp': datetime.utcnow().isoformat()
+            }
         
         try:
             async with self.connection_pool.acquire() as conn:
