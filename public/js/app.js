@@ -7,6 +7,10 @@ let isLoggedIn = false;
 let currentUser = null;
 let generatedPresentationId = null;
 
+// Analytics state
+let analyticsData = {};
+let charts = {};
+
 // API base URL
 const API_BASE = '/api';
 

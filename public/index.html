@@ -6,6 +6,7 @@
     <title>Presentation Generator Platform</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .gradient-bg {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -392,6 +393,291 @@
                             <div class="font-medium">System Settings</div>
                             <div class="text-sm text-gray-600">Configure system parameters</div>
                         </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Dashboard Tab -->
+        <div id="dashboard" class="tab-content">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-3xl font-bold text-gray-800">Analytics Dashboard</h2>
+                    <div class="flex items-center space-x-4">
+                        <select id="timeRangeSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="7d">Last 7 days</option>
+                            <option value="30d" selected>Last 30 days</option>
+                            <option value="90d">Last 90 days</option>
+                        </select>
+                        <button id="refreshAnalyticsBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            <i class="fas fa-sync-alt mr-2"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Dashboard Overview -->
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-blue-100 text-blue-600">
+                                <i class="fas fa-presentation text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Total Presentations</p>
+                                <p class="text-2xl font-bold text-gray-900" id="totalPresentations">-</p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <span class="text-sm text-green-600" id="recentPresentations">-</span>
+                            <span class="text-sm text-gray-500">recent</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-green-100 text-green-600">
+                                <i class="fas fa-file-powerpoint text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Total Sources</p>
+                                <p class="text-2xl font-bold text-gray-900" id="totalSources">-</p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <span class="text-sm text-green-600" id="approvedSources">-</span>
+                            <span class="text-sm text-gray-500">approved</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-purple-100 text-purple-600">
+                                <i class="fas fa-users text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Active Users</p>
+                                <p class="text-2xl font-bold text-gray-900" id="activeUsers">-</p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <span class="text-sm text-green-600" id="recentActivity">-</span>
+                            <span class="text-sm text-gray-500">recent activity</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 rounded-full bg-yellow-100 text-yellow-600">
+                                <i class="fas fa-chart-line text-xl"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Success Rate</p>
+                                <p class="text-2xl font-bold text-gray-900" id="successRate">-</p>
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <span class="text-sm text-gray-500">completed presentations</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid lg:grid-cols-2 gap-8 mb-8">
+                    <!-- Industry Breakdown Chart -->
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Industry Breakdown</h3>
+                        <div id="industryChart" class="h-64">
+                            <div class="flex items-center justify-center h-full text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>
+                                Loading chart...
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Use Case Breakdown Chart -->
+                    <div class="bg-white rounded-lg shadow-lg p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Use Case Breakdown</h3>
+                        <div id="useCaseChart" class="h-64">
+                            <div class="flex items-center justify-center h-full text-gray-500">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>
+                                Loading chart...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Tabs -->
+                <div class="bg-white rounded-lg shadow-lg">
+                    <div class="border-b border-gray-200">
+                        <nav class="-mb-px flex space-x-8 px-6">
+                            <button class="analytics-tab py-4 px-1 border-b-2 border-blue-500 text-blue-600 font-medium text-sm" data-tab="overview">
+                                Overview
+                            </button>
+                            <button class="analytics-tab py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm" data-tab="industry">
+                                Industry Analytics
+                            </button>
+                            <button class="analytics-tab py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm" data-tab="sources">
+                                Source Usage
+                            </button>
+                            <button class="analytics-tab py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm" data-tab="users">
+                                User Activity
+                            </button>
+                            <button class="analytics-tab py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm" data-tab="files">
+                                File Management
+                            </button>
+                            <button class="analytics-tab py-4 px-1 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-medium text-sm" data-tab="source-mgmt">
+                                Source Management
+                            </button>
+                        </nav>
+                    </div>
+
+                    <!-- Analytics Content -->
+                    <div class="p-6">
+                        <!-- Overview Tab -->
+                        <div id="overview-tab" class="analytics-tab-content">
+                            <div class="grid lg:grid-cols-2 gap-8">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Top Sources</h4>
+                                    <div id="topSourcesList" class="space-y-3">
+                                        <div class="flex items-center justify-center h-32 text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading...
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h4>
+                                    <div id="recentActivityList" class="space-y-3">
+                                        <div class="flex items-center justify-center h-32 text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Industry Analytics Tab -->
+                        <div id="industry-tab" class="analytics-tab-content hidden">
+                            <div class="mb-6">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Select Industry</label>
+                                <select id="industrySelect" class="w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">Loading industries...</option>
+                                </select>
+                            </div>
+                            <div id="industryAnalyticsContent">
+                                <div class="flex items-center justify-center h-64 text-gray-500">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                                    Loading industry analytics...
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Source Usage Analytics Tab -->
+                        <div id="sources-tab" class="analytics-tab-content hidden">
+                            <div class="grid lg:grid-cols-2 gap-8">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Source Performance</h4>
+                                    <div id="sourcePerformanceList" class="space-y-3">
+                                        <div class="flex items-center justify-center h-32 text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading...
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Industry Performance</h4>
+                                    <div id="industryPerformanceList" class="space-y-3">
+                                        <div class="flex items-center justify-center h-32 text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- User Activity Analytics Tab -->
+                        <div id="users-tab" class="analytics-tab-content hidden">
+                            <div class="grid lg:grid-cols-2 gap-8">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">User Activity</h4>
+                                    <div id="userActivityList" class="space-y-3">
+                                        <div class="flex items-center justify-center h-32 text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading...
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Activity Trends</h4>
+                                    <div id="activityTrendsChart" class="h-64">
+                                        <div class="flex items-center justify-center h-full text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading chart...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- File Management Analytics Tab -->
+                        <div id="files-tab" class="analytics-tab-content hidden">
+                            <div class="mb-6">
+                                <div class="flex items-center space-x-4">
+                                    <label class="block text-sm font-medium text-gray-700">Event Type</label>
+                                    <select id="eventTypeSelect" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                        <option value="all">All Events</option>
+                                        <option value="upload">Uploads Only</option>
+                                        <option value="delete">Deletions Only</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="grid lg:grid-cols-2 gap-8">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">File Activity Logs</h4>
+                                    <div id="fileLogsList" class="space-y-3 max-h-96 overflow-y-auto">
+                                        <div class="flex items-center justify-center h-32 text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading...
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">File Activity Summary</h4>
+                                    <div id="fileSummaryList" class="space-y-3">
+                                        <div class="flex items-center justify-center h-32 text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Source Management Analytics Tab -->
+                        <div id="source-mgmt-tab" class="analytics-tab-content hidden">
+                            <div class="grid lg:grid-cols-2 gap-8">
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Source Status</h4>
+                                    <div id="sourceStatusList" class="space-y-3">
+                                        <div class="flex items-center justify-center h-32 text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading...
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <h4 class="text-lg font-semibold text-gray-800 mb-4">Upload Trends</h4>
+                                    <div id="uploadTrendsChart" class="h-64">
+                                        <div class="flex items-center justify-center h-full text-gray-500">
+                                            <i class="fas fa-spinner fa-spin mr-2"></i>
+                                            Loading chart...
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
