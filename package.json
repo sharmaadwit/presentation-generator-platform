@@ -11,7 +11,7 @@
     "install:backend": "cd backend && npm install",
     "build:backend": "cd backend && npm run build",
     "start": "cd backend && npm start",
-    "start:production": "cd backend && npm start",
+    "start:production": "concurrently \"cd backend && npm start\" \"cd ai-service && python app.py\"",
     "install:all": "cd backend && npm install && cd ../ai-service && pip install -r requirements.txt"
   },
   "keywords": ["presentation", "ai", "automation", "slides", "generation"],
