@@ -988,7 +988,41 @@ function getStatusColor(status) {
 
 async function downloadFile(fileId) {
     try {
-        showNotification('Download functionality coming soon!', 'info');
+        // Use the new download functionality
+        const response = await fetch(`/api/upload/download/${fileId}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Download failed');
+        }
+
+        // Get the filename from Content-Disposition header
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let downloadFileName = 'document.pptx';
+        
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+                downloadFileName = filenameMatch[1];
+            }
+        }
+
+        // Create blob and download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = downloadFileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showNotification('Document downloaded successfully!', 'success');
+
     } catch (error) {
         console.error('Error downloading file:', error);
         showNotification('Failed to download file', 'error');
