@@ -247,14 +247,29 @@ async function startTrainingProcess(trainingId: string) {
           'processing'
         );
         
+        console.log(`🔄 Processing file ${processedFiles + 1}/${totalFiles}: ${file.title}`);
+        console.log(`📁 File path: ${file.file_path}`);
+        console.log(`📊 Current memory usage: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+        
         // Check if file already has embeddings
         if (file.embedding_id) {
           processedFiles++;
           continue;
         }
         
-        // Extract slides and generate embeddings
-        const slides = await extractSlidesFromFile(file);
+        // Extract slides and generate embeddings with timeout
+        console.log(`⏱️ Starting slide extraction for: ${file.title}`);
+        const startTime = Date.now();
+        
+        const slides = await Promise.race([
+          extractSlidesFromFile(file),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Slide extraction timeout after 30 seconds')), 30000)
+          )
+        ]) as any[];
+        
+        const extractionTime = Date.now() - startTime;
+        console.log(`✅ Extracted ${slides.length} slides from ${file.title} in ${extractionTime}ms`);
         
         // Generate embeddings for each slide
         for (const slide of slides) {
@@ -308,7 +323,23 @@ async function startTrainingProcess(trainingId: string) {
         processedFiles++;
         
       } catch (error) {
-        console.error(`Error processing file ${file.id}:`, error);
+        console.error(`❌ Error processing file ${file.title}:`, error);
+        console.error(`❌ Error details:`, {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+          filePath: file.file_path,
+          fileName: file.title
+        });
+        
+        // Update progress with error
+        await updateTrainingProgress(
+          client, 
+          trainingId, 
+          Math.round((processedFiles / totalFiles) * 100), 
+          `Error processing ${file.title}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          'error'
+        );
+        
         // Continue with next file
       }
     }
@@ -408,14 +439,14 @@ async function extractSlidesFromFile(file: any): Promise<any[]> {
     
     // Check if it's a connection error
     if (error instanceof Error && ('code' in error) && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
-      console.log('AI service not available, attempting to extract slides directly from file');
-      return await extractSlidesDirectly(file);
+      console.log('AI service not available, using structured fallback content');
+      return createFallbackSlides(file);
     }
     
-    // For 404 errors, also extract slides directly
+    // For 404 errors, also use structured fallback
     if (error instanceof Error && 'response' in error && (error as any).response?.status === 404) {
-      console.log('AI service endpoint not found (404), attempting to extract slides directly from file');
-      return await extractSlidesDirectly(file);
+      console.log('AI service endpoint not found (404), using structured fallback content');
+      return createFallbackSlides(file);
     }
     
     return [];
