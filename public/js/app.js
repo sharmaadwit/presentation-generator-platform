@@ -1199,7 +1199,7 @@ async function pollTrainingProgress() {
             clearInterval(pollInterval);
             showNotification('Error checking training progress', 'error');
         }
-    }, 2000); // Poll every 2 seconds
+    }, 10000); // Poll every 5 seconds
 }
 
 function deleteSource(id) {

@@ -212,15 +212,7 @@ async function startTrainingProcess(trainingId: string) {
     const files = filesResult.rows;
     const totalFiles = files.length;
     
-    console.log(`Training process started for session ${trainingId}`);
-    console.log(`Found ${totalFiles} files to process:`, files.map(f => ({ id: f.id, title: f.title, status: f.status })));
-    
     if (totalFiles === 0) {
-      console.log('No files found for training - checking all presentation_sources...');
-      
-      // Debug: Check what files exist
-      const debugResult = await client.query('SELECT id, title, status, source_type FROM presentation_sources ORDER BY created_at DESC LIMIT 10');
-      console.log('All presentation_sources:', debugResult.rows);
       
       await updateTrainingProgress(client, trainingId, 100, 'No files to train', 'completed');
       await client.query(
@@ -337,12 +329,17 @@ async function updateTrainingProgress(
   message: string, 
   stage: string
 ) {
-  await client.query(
-    `INSERT INTO training_progress (
-      training_session_id, progress, message, stage
-    ) VALUES ($1, $2, $3, $4)`,
-    [trainingId, progress, message, stage]
-  );
+  try {
+    await client.query(
+      `INSERT INTO training_progress (
+        training_session_id, progress, message, stage
+      ) VALUES ($1, $2, $3, $4)`,
+      [trainingId, progress, message, stage]
+    );
+  } catch (error) {
+    console.error('Error updating training progress:', error);
+    // Don't throw error to prevent training from stopping
+  }
 }
 
 // Helper function to extract slides from file
