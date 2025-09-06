@@ -95,7 +95,22 @@ test_ai_service_dependencies() {
         if python3 -c "import $package" > /dev/null 2>&1; then
             print_success "Package $package available"
         else
-            print_error "Package $package missing"
+            # Try with different package names for some packages
+            if [ "$package" = "python-pptx" ]; then
+                if python3 -c "import pptx" > /dev/null 2>&1; then
+                    print_success "Package $package available (as pptx)"
+                else
+                    print_error "Package $package missing"
+                fi
+            elif [ "$package" = "psycopg2-binary" ]; then
+                if python3 -c "import psycopg2" > /dev/null 2>&1; then
+                    print_success "Package $package available (as psycopg2)"
+                else
+                    print_error "Package $package missing"
+                fi
+            else
+                print_error "Package $package missing"
+            fi
         fi
     done
     

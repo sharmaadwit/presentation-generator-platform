@@ -6,7 +6,7 @@ cd backend && npm start &
 BACKEND_PID=$!
 
 echo "Starting AI Service..."
-cd ../ai-service && python3 -m uvicorn app:app --host 0.0.0.0 --port 8000 &
+cd ../ai-service && source venv/bin/activate && python3 -m uvicorn app:app --host 0.0.0.0 --port 8000 &
 AI_PID=$!
 
 # Wait for both services to start
