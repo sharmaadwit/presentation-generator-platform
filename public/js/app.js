@@ -228,10 +228,15 @@ function showTab(tabName) {
         selectedTab.classList.add('active');
         currentTab = tabName;
         
-        // Load files when admin dashboard or upload tab is shown
-        if ((tabName === 'adminDashboard' || tabName === 'upload') && isLoggedIn) {
-            loadFiles();
-        }
+    // Load files when admin dashboard or upload tab is shown
+    if ((tabName === 'adminDashboard' || tabName === 'upload') && isLoggedIn) {
+        loadFiles();
+    }
+    
+    // Load analytics when dashboard tab is shown
+    if (tabName === 'dashboard' && isLoggedIn) {
+        loadAnalytics();
+    }
     }
     
     // Update URL based on tab
@@ -1284,6 +1289,625 @@ function toggleMobileMenu() {
     // TODO: Implement mobile menu toggle
     showNotification('Mobile menu coming soon!', 'info');
 }
+
+// ==================== ANALYTICS SYSTEM ====================
+
+function initializeAnalytics() {
+    // Add event listeners for analytics
+    const timeRangeSelect = document.getElementById('timeRangeSelect');
+    if (timeRangeSelect) {
+        timeRangeSelect.addEventListener('change', loadAnalytics);
+    }
+    
+    const refreshAnalyticsBtn = document.getElementById('refreshAnalyticsBtn');
+    if (refreshAnalyticsBtn) {
+        refreshAnalyticsBtn.addEventListener('click', loadAnalytics);
+    }
+    
+    // Analytics tab navigation
+    document.querySelectorAll('.analytics-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            const tabName = e.target.getAttribute('data-tab');
+            switchAnalyticsTab(tabName);
+        });
+    });
+    
+    // Industry select change
+    const industrySelect = document.getElementById('industrySelect');
+    if (industrySelect) {
+        industrySelect.addEventListener('change', loadIndustryAnalytics);
+    }
+    
+    // Event type select change
+    const eventTypeSelect = document.getElementById('eventTypeSelect');
+    if (eventTypeSelect) {
+        eventTypeSelect.addEventListener('change', loadFileAnalytics);
+    }
+}
+
+async function loadAnalytics() {
+    if (!isLoggedIn) return;
+    
+    try {
+        const timeRange = document.getElementById('timeRangeSelect')?.value || '30d';
+        const token = localStorage.getItem('token');
+        
+        // Load dashboard metrics
+        const response = await fetch(`${API_BASE}/analytics/dashboard?timeRange=${timeRange}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            analyticsData.dashboard = data;
+            updateDashboardOverview(data);
+            updateCharts(data);
+            updateOverviewTab(data);
+        }
+        
+        // Load other analytics tabs
+        loadSourceAnalytics();
+        loadUserAnalytics();
+        loadFileAnalytics();
+        loadSourceManagementAnalytics();
+        
+    } catch (error) {
+        console.error('Error loading analytics:', error);
+        showNotification('Failed to load analytics data', 'error');
+    }
+}
+
+function updateDashboardOverview(data) {
+    const overview = data.overview;
+    
+    // Update metric cards
+    document.getElementById('totalPresentations').textContent = overview.presentations?.total_presentations || 0;
+    document.getElementById('recentPresentations').textContent = overview.presentations?.recent_presentations || 0;
+    document.getElementById('totalSources').textContent = overview.sources?.total_sources || 0;
+    document.getElementById('approvedSources').textContent = overview.sources?.approved_sources || 0;
+    document.getElementById('activeUsers').textContent = overview.users?.active_users || 0;
+    document.getElementById('recentActivity').textContent = overview.users?.recent_activity || 0;
+    
+    // Calculate success rate
+    const total = overview.presentations?.total_presentations || 0;
+    const completed = overview.presentations?.completed_presentations || 0;
+    const successRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    document.getElementById('successRate').textContent = `${successRate}%`;
+}
+
+function updateCharts(data) {
+    // Industry breakdown chart
+    updateIndustryChart(data.industryBreakdown || []);
+    
+    // Use case breakdown chart
+    updateUseCaseChart(data.useCaseBreakdown || []);
+}
+
+function updateIndustryChart(data) {
+    const ctx = document.getElementById('industryChart');
+    if (!ctx) return;
+    
+    // Destroy existing chart
+    if (charts.industry) {
+        charts.industry.destroy();
+    }
+    
+    const labels = data.map(item => item.industry);
+    const values = data.map(item => item.count);
+    
+    charts.industry = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: [
+                    '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
+                    '#06B6D4', '#84CC16', '#F97316', '#EC4899', '#6B7280'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function updateUseCaseChart(data) {
+    const ctx = document.getElementById('useCaseChart');
+    if (!ctx) return;
+    
+    // Destroy existing chart
+    if (charts.useCase) {
+        charts.useCase.destroy();
+    }
+    
+    const labels = data.map(item => item.use_case);
+    const values = data.map(item => item.count);
+    
+    charts.useCase = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Use Cases',
+                data: values,
+                backgroundColor: '#3B82F6'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function updateOverviewTab(data) {
+    // Update top sources
+    const topSourcesList = document.getElementById('topSourcesList');
+    if (topSourcesList && data.topSources) {
+        topSourcesList.innerHTML = data.topSources.map(source => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                    <h5 class="font-medium">${source.title}</h5>
+                    <p class="text-sm text-gray-500">${source.industry}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-semibold">${source.usage_count}</p>
+                    <p class="text-sm text-gray-500">uses</p>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Update recent activity (placeholder)
+    const recentActivityList = document.getElementById('recentActivityList');
+    if (recentActivityList) {
+        recentActivityList.innerHTML = `
+            <div class="text-center text-gray-500 py-8">
+                <i class="fas fa-chart-line text-4xl mb-2"></i>
+                <p>Recent activity data coming soon</p>
+            </div>
+        `;
+    }
+}
+
+async function loadSourceAnalytics() {
+    try {
+        const timeRange = document.getElementById('timeRangeSelect')?.value || '30d';
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/analytics/sources?timeRange=${timeRange}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateSourceAnalytics(data);
+        }
+    } catch (error) {
+        console.error('Error loading source analytics:', error);
+    }
+}
+
+function updateSourceAnalytics(data) {
+    // Update source performance
+    const sourcePerformanceList = document.getElementById('sourcePerformanceList');
+    if (sourcePerformanceList && data.sourceUsage) {
+        sourcePerformanceList.innerHTML = data.sourceUsage.slice(0, 5).map(source => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                    <h5 class="font-medium">${source.title}</h5>
+                    <p class="text-sm text-gray-500">${source.industry}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-semibold">${source.total_usage}</p>
+                    <p class="text-sm text-gray-500">uses</p>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Update industry performance
+    const industryPerformanceList = document.getElementById('industryPerformanceList');
+    if (industryPerformanceList && data.industryPerformance) {
+        industryPerformanceList.innerHTML = data.industryPerformance.map(industry => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                    <h5 class="font-medium">${industry.industry}</h5>
+                    <p class="text-sm text-gray-500">${industry.total_sources} sources</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-semibold">${industry.total_usage}</p>
+                    <p class="text-sm text-gray-500">uses</p>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+async function loadUserAnalytics() {
+    try {
+        const timeRange = document.getElementById('timeRangeSelect')?.value || '30d';
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/analytics/users?timeRange=${timeRange}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateUserAnalytics(data);
+        }
+    } catch (error) {
+        console.error('Error loading user analytics:', error);
+    }
+}
+
+function updateUserAnalytics(data) {
+    // Update user activity
+    const userActivityList = document.getElementById('userActivityList');
+    if (userActivityList && data.userActivity) {
+        userActivityList.innerHTML = data.userActivity.slice(0, 5).map(user => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                    <h5 class="font-medium">${user.name || 'Unknown User'}</h5>
+                    <p class="text-sm text-gray-500">${user.total_presentations} presentations</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-semibold">${user.industries_used}</p>
+                    <p class="text-sm text-gray-500">industries</p>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Update activity trends chart
+    updateActivityTrendsChart(data.activityTrends || []);
+}
+
+function updateActivityTrendsChart(data) {
+    const ctx = document.getElementById('activityTrendsChart');
+    if (!ctx) return;
+    
+    // Destroy existing chart
+    if (charts.activityTrends) {
+        charts.activityTrends.destroy();
+    }
+    
+    const labels = data.map(item => new Date(item.date).toLocaleDateString());
+    const activityCounts = data.map(item => item.activity_count);
+    
+    charts.activityTrends = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Activity Count',
+                data: activityCounts,
+                borderColor: '#3B82F6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+async function loadFileAnalytics() {
+    try {
+        const timeRange = document.getElementById('timeRangeSelect')?.value || '30d';
+        const eventType = document.getElementById('eventTypeSelect')?.value || 'all';
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/analytics/files?timeRange=${timeRange}&eventType=${eventType}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateFileAnalytics(data);
+        }
+    } catch (error) {
+        console.error('Error loading file analytics:', error);
+    }
+}
+
+function updateFileAnalytics(data) {
+    // Update file logs
+    const fileLogsList = document.getElementById('fileLogsList');
+    if (fileLogsList && data.fileLogs) {
+        fileLogsList.innerHTML = data.fileLogs.slice(0, 10).map(log => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                    <h5 class="font-medium">${log.event_type}</h5>
+                    <p class="text-sm text-gray-500">${new Date(log.created_at).toLocaleString()}</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-semibold">${log.user_name || 'System'}</p>
+                    <p class="text-sm text-gray-500">${log.user_email || ''}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Update file summary
+    const fileSummaryList = document.getElementById('fileSummaryList');
+    if (fileSummaryList && data.fileSummary) {
+        fileSummaryList.innerHTML = data.fileSummary.map(summary => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                    <h5 class="font-medium">${summary.event_type}</h5>
+                    <p class="text-sm text-gray-500">${summary.recent_count} recent</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-semibold">${summary.count}</p>
+                    <p class="text-sm text-gray-500">total</p>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+async function loadSourceManagementAnalytics() {
+    try {
+        const timeRange = document.getElementById('timeRangeSelect')?.value || '30d';
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/analytics/source-management?timeRange=${timeRange}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateSourceManagementAnalytics(data);
+        }
+    } catch (error) {
+        console.error('Error loading source management analytics:', error);
+    }
+}
+
+function updateSourceManagementAnalytics(data) {
+    // Update source status
+    const sourceStatusList = document.getElementById('sourceStatusList');
+    if (sourceStatusList && data.sourceStatus) {
+        sourceStatusList.innerHTML = data.sourceStatus.map(status => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                    <h5 class="font-medium">${status.status}</h5>
+                    <p class="text-sm text-gray-500">${status.recent_count} recent</p>
+                </div>
+                <div class="text-right">
+                    <p class="font-semibold">${status.count}</p>
+                    <p class="text-sm text-gray-500">total</p>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    // Update upload trends chart
+    updateUploadTrendsChart(data.sourceUploadTrends || []);
+}
+
+function updateUploadTrendsChart(data) {
+    const ctx = document.getElementById('uploadTrendsChart');
+    if (!ctx) return;
+    
+    // Destroy existing chart
+    if (charts.uploadTrends) {
+        charts.uploadTrends.destroy();
+    }
+    
+    const labels = data.map(item => new Date(item.date).toLocaleDateString());
+    const uploads = data.map(item => item.uploads);
+    const approved = data.map(item => item.approved);
+    
+    charts.uploadTrends = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Uploads',
+                    data: uploads,
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: false
+                },
+                {
+                    label: 'Approved',
+                    data: approved,
+                    borderColor: '#10B981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+async function loadIndustryAnalytics() {
+    const industry = document.getElementById('industrySelect')?.value;
+    if (!industry) return;
+    
+    try {
+        const timeRange = document.getElementById('timeRangeSelect')?.value || '30d';
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${API_BASE}/analytics/industry/${industry}?timeRange=${timeRange}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateIndustryAnalytics(data);
+        }
+    } catch (error) {
+        console.error('Error loading industry analytics:', error);
+    }
+}
+
+function updateIndustryAnalytics(data) {
+    const content = document.getElementById('industryAnalyticsContent');
+    if (!content) return;
+    
+    content.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-gray-50 rounded-lg p-6">
+                <h4 class="text-lg font-semibold mb-4">Industry Metrics</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span>Total Presentations:</span>
+                        <span class="font-semibold">${data.metrics?.total_presentations || 0}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Recent Presentations:</span>
+                        <span class="font-semibold">${data.metrics?.recent_presentations || 0}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Unique Users:</span>
+                        <span class="font-semibold">${data.metrics?.unique_users || 0}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Avg Slides:</span>
+                        <span class="font-semibold">${Math.round(data.metrics?.avg_slides_per_presentation || 0)}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 rounded-lg p-6">
+                <h4 class="text-lg font-semibold mb-4">Use Cases</h4>
+                <div class="space-y-2">
+                    ${data.useCases?.map(useCase => `
+                        <div class="flex justify-between">
+                            <span>${useCase.use_case}:</span>
+                            <span class="font-semibold">${useCase.count}</span>
+                        </div>
+                    `).join('') || '<p class="text-gray-500">No use cases found</p>'}
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function switchAnalyticsTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.analytics-tab').forEach(tab => {
+        tab.classList.remove('border-blue-500', 'text-blue-600');
+        tab.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    const activeTab = document.querySelector(`[data-tab="${tabName}"]`);
+    if (activeTab) {
+        activeTab.classList.remove('border-transparent', 'text-gray-500');
+        activeTab.classList.add('border-blue-500', 'text-blue-600');
+    }
+    
+    // Update tab content
+    document.querySelectorAll('.analytics-tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    
+    const activeContent = document.getElementById(`${tabName}-tab`);
+    if (activeContent) {
+        activeContent.classList.remove('hidden');
+    }
+    
+    // Load specific tab data if needed
+    if (tabName === 'industry') {
+        loadIndustryList();
+    }
+}
+
+async function loadIndustryList() {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/analytics/dashboard`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const industrySelect = document.getElementById('industrySelect');
+            if (industrySelect && data.industryBreakdown) {
+                industrySelect.innerHTML = '<option value="">Select an industry...</option>' +
+                    data.industryBreakdown.map(industry => 
+                        `<option value="${industry.industry}">${industry.industry} (${industry.count})</option>`
+                    ).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading industry list:', error);
+    }
+}
+
+// Initialize analytics when app loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAnalytics();
+});
 
 // Export functions for global access
 window.showTab = showTab;
