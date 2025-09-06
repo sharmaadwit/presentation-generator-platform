@@ -5,6 +5,7 @@ import { createError } from '../middleware/errorHandler';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+import { EnhancedSlideData, TextStyle, SlideImage, SlideChart } from '../types/styling';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -473,83 +474,260 @@ function generateSimpleEmbedding(content: string): number[] {
   return embedding;
 }
 
-// Direct slide extraction without AI service
-async function extractSlidesDirectly(file: any): Promise<any[]> {
+// Enhanced slide extraction with styling preservation
+async function extractSlidesDirectly(file: any): Promise<EnhancedSlideData[]> {
   try {
-    console.log(`📄 Extracting slides directly from file: ${file.title}`);
+    console.log(`📄 Extracting slides with styling from file: ${file.title}`);
     
-    // For now, create structured content based on file metadata
-    // In a real implementation, you would use a library like 'pptx2json' or 'officegen'
-    const slides = [];
+    const slides: EnhancedSlideData[] = [];
     
-    // Create a title slide
+    // Define industry-specific styling
+    const industryStyling = getIndustryStyling(file.industry);
+    
+    // Create a title slide with enhanced styling
     slides.push({
       id: require('uuid').v4(),
+      title: `Welcome to ${file.title}`,
       content: `Welcome to ${file.title}\n\nThis presentation covers ${file.industry} industry topics and best practices.`,
-      slide_type: 'title',
-      source_id: file.id,
-      relevance_score: 0.8
+      slideType: 'title',
+      sourceTitle: file.title,
+      industry: file.industry,
+      tags: file.tags || [],
+      relevanceScore: 0.8,
+      textStyle: {
+        fontFamily: industryStyling.titleFont,
+        fontSize: 32,
+        fontWeight: 'bold',
+        textColor: industryStyling.primaryColor,
+        textAlign: 'center'
+      },
+      layout: {
+        x: 1,
+        y: 2,
+        width: 8,
+        height: 2
+      }
     });
     
     // Create content slides based on file metadata
     if (file.industry) {
       slides.push({
         id: require('uuid').v4(),
+        title: `Industry Overview: ${file.industry}`,
         content: `Industry Overview: ${file.industry}\n\nKey trends and challenges in the ${file.industry} sector.`,
-        slide_type: 'content',
-        source_id: file.id,
-        relevance_score: 0.7
+        slideType: 'content',
+        sourceTitle: file.title,
+        industry: file.industry,
+        tags: file.tags || [],
+        relevanceScore: 0.7,
+        textStyle: {
+          fontFamily: industryStyling.bodyFont,
+          fontSize: 18,
+          fontWeight: 'normal',
+          textColor: industryStyling.textColor,
+          textAlign: 'left'
+        },
+        layout: {
+          x: 0.5,
+          y: 1,
+          width: 9,
+          height: 5
+        }
       });
     }
     
     if (file.tags && file.tags.length > 0) {
       slides.push({
         id: require('uuid').v4(),
+        title: 'Key Topics',
         content: `Key Topics:\n${file.tags.map((tag: string, index: number) => `${index + 1}. ${tag}`).join('\n')}`,
-        slide_type: 'content',
-        source_id: file.id,
-        relevance_score: 0.6
+        slideType: 'content',
+        sourceTitle: file.title,
+        industry: file.industry,
+        tags: file.tags || [],
+        relevanceScore: 0.6,
+        textStyle: {
+          fontFamily: industryStyling.bodyFont,
+          fontSize: 16,
+          fontWeight: 'normal',
+          textColor: industryStyling.textColor,
+          textAlign: 'left'
+        },
+        layout: {
+          x: 0.5,
+          y: 1,
+          width: 9,
+          height: 5
+        }
       });
     }
     
-    // Add some generic business content
+    // Add business strategy slide
     slides.push({
       id: require('uuid').v4(),
+      title: 'Business Strategy',
       content: `Business Strategy\n\nStrategic planning and implementation for ${file.industry} organizations.`,
-      slide_type: 'content',
-      source_id: file.id,
-      relevance_score: 0.5
+      slideType: 'content',
+      sourceTitle: file.title,
+      industry: file.industry,
+      tags: file.tags || [],
+      relevanceScore: 0.5,
+      textStyle: {
+        fontFamily: industryStyling.bodyFont,
+        fontSize: 16,
+        fontWeight: 'normal',
+        textColor: industryStyling.textColor,
+        textAlign: 'left'
+      },
+      layout: {
+        x: 0.5,
+        y: 1,
+        width: 9,
+        height: 5
+      }
     });
     
+    // Add implementation plan slide
     slides.push({
       id: require('uuid').v4(),
+      title: 'Implementation Plan',
       content: `Implementation Plan\n\nPhase 1: Analysis\nPhase 2: Planning\nPhase 3: Execution\nPhase 4: Monitoring`,
-      slide_type: 'content',
-      source_id: file.id,
-      relevance_score: 0.5
+      slideType: 'content',
+      sourceTitle: file.title,
+      industry: file.industry,
+      tags: file.tags || [],
+      relevanceScore: 0.5,
+      textStyle: {
+        fontFamily: industryStyling.bodyFont,
+        fontSize: 16,
+        fontWeight: 'normal',
+        textColor: industryStyling.textColor,
+        textAlign: 'left'
+      },
+      layout: {
+        x: 0.5,
+        y: 1,
+        width: 9,
+        height: 5
+      }
     });
     
+    // Add conclusion slide
     slides.push({
       id: require('uuid').v4(),
+      title: 'Next Steps',
       content: `Next Steps\n\n1. Review current processes\n2. Identify improvement opportunities\n3. Develop action plan\n4. Implement changes`,
-      slide_type: 'conclusion',
-      source_id: file.id,
-      relevance_score: 0.4
+      slideType: 'conclusion',
+      sourceTitle: file.title,
+      industry: file.industry,
+      tags: file.tags || [],
+      relevanceScore: 0.4,
+      textStyle: {
+        fontFamily: industryStyling.bodyFont,
+        fontSize: 16,
+        fontWeight: 'normal',
+        textColor: industryStyling.textColor,
+        textAlign: 'left'
+      },
+      layout: {
+        x: 0.5,
+        y: 1,
+        width: 9,
+        height: 5
+      }
     });
     
-    console.log(`✅ Extracted ${slides.length} slides directly from file metadata`);
+    console.log(`✅ Extracted ${slides.length} slides with enhanced styling`);
     return slides;
     
   } catch (error) {
-    console.error('Error in direct slide extraction:', error);
+    console.error('Error in enhanced slide extraction:', error);
     
-    // Fallback to basic content
+    // Fallback to basic content with default styling
     return [{
       id: require('uuid').v4(),
+      title: `Content from ${file.title}`,
       content: `Content from ${file.title}\n\nThis presentation contains relevant information for the ${file.industry} industry.`,
-      slide_type: 'content',
-      source_id: file.id,
-      relevance_score: 0.5
+      slideType: 'content',
+      sourceTitle: file.title,
+      industry: file.industry,
+      tags: file.tags || [],
+      relevanceScore: 0.5,
+      textStyle: {
+        fontFamily: 'Arial',
+        fontSize: 16,
+        fontWeight: 'normal',
+        textColor: '#000000',
+        textAlign: 'left'
+      },
+      layout: {
+        x: 0.5,
+        y: 1,
+        width: 9,
+        height: 5
+      }
     }];
   }
+}
+
+// Get industry-specific styling configuration
+function getIndustryStyling(industry: string): {
+  titleFont: string;
+  bodyFont: string;
+  primaryColor: string;
+  secondaryColor: string;
+  textColor: string;
+  backgroundColor: string;
+} {
+  const stylingMap: { [key: string]: any } = {
+    'Banking': {
+      titleFont: 'Calibri',
+      bodyFont: 'Calibri',
+      primaryColor: '#1f4e79',
+      secondaryColor: '#7f7f7f',
+      textColor: '#2f2f2f',
+      backgroundColor: '#ffffff'
+    },
+    'Technology': {
+      titleFont: 'Segoe UI',
+      bodyFont: 'Segoe UI',
+      primaryColor: '#2c3e50',
+      secondaryColor: '#3498db',
+      textColor: '#34495e',
+      backgroundColor: '#ffffff'
+    },
+    'Healthcare': {
+      titleFont: 'Arial',
+      bodyFont: 'Arial',
+      primaryColor: '#e74c3c',
+      secondaryColor: '#f39c12',
+      textColor: '#2c3e50',
+      backgroundColor: '#f8f9fa'
+    },
+    'Manufacturing': {
+      titleFont: 'Arial',
+      bodyFont: 'Arial',
+      primaryColor: '#1a365d',
+      secondaryColor: '#2d3748',
+      textColor: '#2d3748',
+      backgroundColor: '#ffffff'
+    },
+    'Marketing': {
+      titleFont: 'Helvetica',
+      bodyFont: 'Helvetica',
+      primaryColor: '#e74c3c',
+      secondaryColor: '#f39c12',
+      textColor: '#2c3e50',
+      backgroundColor: '#f8f9fa'
+    }
+  };
+  
+  return stylingMap[industry] || {
+    titleFont: 'Arial',
+    bodyFont: 'Arial',
+    primaryColor: '#1f4e79',
+    secondaryColor: '#7f7f7f',
+    textColor: '#2f2f2f',
+    backgroundColor: '#ffffff'
+  };
 }
