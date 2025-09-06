@@ -383,7 +383,8 @@ const generatePresentationAsync = async (presentationId: string, requestData: an
       pollForCompletion(presentationId);
       return;
     } catch (aiError) {
-      console.warn('⚠️ AI service not available, using fallback generation:', aiError.message);
+      const errorMessage = aiError instanceof Error ? aiError.message : 'Unknown error';
+      console.warn('⚠️ AI service not available, using fallback generation:', errorMessage);
       
       // Fallback: Create a simple presentation using the existing trained data
       await generateFallbackPresentation(presentationId, requestData);
