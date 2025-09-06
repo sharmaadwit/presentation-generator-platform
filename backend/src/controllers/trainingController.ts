@@ -357,7 +357,7 @@ async function extractSlidesFromFile(file: any): Promise<any[]> {
     console.error('Error extracting slides from AI service:', error);
     
     // If AI service is not available, create mock slides for testing
-    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+    if (error instanceof Error && ('code' in error) && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
       console.log('AI service not available, creating mock slides for testing');
       return [{
         id: `mock-slide-${file.id}-1`,
