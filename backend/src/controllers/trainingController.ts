@@ -561,18 +561,91 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
   try {
     console.log(`📄 Extracting real slides from PowerPoint file: ${file.title}`);
     
-    // Check if file exists
-    if (!fs.existsSync(file.file_path)) {
-      console.error(`File not found: ${file.file_path}`);
+    // Resolve file path - same logic as download function
+    let filePath = file.file_path;
+    
+    console.log(`🔍 Original file path: ${filePath}`);
+    console.log(`📁 Current working directory: ${process.cwd()}`);
+    console.log(`📁 Is absolute path: ${path.isAbsolute(filePath)}`);
+
+    // If it's an absolute path that starts with /app/uploads, try relative to backend
+    if (filePath.startsWith('/app/uploads/')) {
+      const relativePath = filePath.replace('/app/uploads/', '');
+      filePath = path.resolve(process.cwd(), 'uploads', relativePath);
+      console.log(`🔄 Converted absolute path to relative: ${filePath}`);
+    } else if (!path.isAbsolute(filePath)) {
+      // If it's a relative path, make it absolute from the current working directory
+      filePath = path.resolve(process.cwd(), filePath);
+      console.log(`🔄 Resolved relative path: ${filePath}`);
+    }
+
+    console.log(`🔍 Looking for file at: ${filePath}`);
+    console.log(`📁 File exists: ${fs.existsSync(filePath)}`);
+
+    // If file doesn't exist at the resolved path, try alternative locations
+    if (!fs.existsSync(filePath)) {
+      console.log(`🔄 Trying alternative paths...`);
+      
+      // Extract just the filename from the original path
+      const fileName = path.basename(file.file_path);
+      console.log(`📄 Filename: ${fileName}`);
+      
+      // Try with different base directories
+      const alternativePaths = [
+        path.resolve(process.cwd(), 'uploads', fileName), // Backend/uploads/filename
+        path.resolve(process.cwd(), '..', 'uploads', fileName), // Parent/uploads/filename
+        path.resolve('/app', 'uploads', fileName), // /app/uploads/filename
+        path.resolve('/app', 'backend', 'uploads', fileName), // /app/backend/uploads/filename
+      ];
+
+      for (const altPath of alternativePaths) {
+        console.log(`🔍 Trying alternative path: ${altPath}`);
+        if (fs.existsSync(altPath)) {
+          console.log(`✅ Found file at: ${altPath}`);
+          filePath = altPath;
+          break;
+        }
+      }
+
+      // If still not found, check what files actually exist in upload directories
+      const uploadDirs = [
+        '/app/uploads',
+        '/app/backend/uploads',
+        path.resolve(process.cwd(), 'uploads'),
+        path.resolve(process.cwd(), '..', 'uploads'),
+      ];
+
+      for (const uploadDir of uploadDirs) {
+        if (fs.existsSync(uploadDir)) {
+          console.log(`📂 Checking upload directory: ${uploadDir}`);
+          const files = fs.readdirSync(uploadDir);
+          console.log(`📋 Files in ${uploadDir}:`, files.slice(0, 10)); // Show first 10 files
+          
+          // Check if our target file is in this directory
+          if (files.includes(fileName)) {
+            const foundPath = path.resolve(uploadDir, fileName);
+            console.log(`✅ Found target file in ${uploadDir}: ${foundPath}`);
+            filePath = foundPath;
+            break;
+          }
+        }
+      }
+    }
+
+    // Final check if file exists
+    if (!fs.existsSync(filePath)) {
+      console.error(`❌ File not found at: ${filePath}`);
+      console.error(`❌ Original path: ${file.file_path}`);
+      console.error(`❌ Current working directory: ${process.cwd()}`);
       return createFallbackSlides(file);
     }
     
     // Parse PowerPoint file
-    console.log(`🔍 Attempting to parse file: ${file.file_path}`);
-    console.log(`📁 File exists: ${fs.existsSync(file.file_path)}`);
-    console.log(`📏 File size: ${fs.statSync(file.file_path).size} bytes`);
+    console.log(`🔍 Attempting to parse file: ${filePath}`);
+    console.log(`📁 File exists: ${fs.existsSync(filePath)}`);
+    console.log(`📏 File size: ${fs.statSync(filePath).size} bytes`);
     
-    const pptxData = await pptx2json(file.file_path);
+    const pptxData = await pptx2json(filePath);
     console.log(`📊 Parsed PowerPoint file with ${pptxData.slides?.length || 0} slides`);
     console.log(`📋 First slide preview:`, pptxData.slides?.[0]);
     
