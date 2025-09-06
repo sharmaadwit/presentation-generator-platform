@@ -310,12 +310,34 @@ async function handleGeneratePresentation(event) {
     try {
         showGenerationStatus();
         
-        // For now, simulate generation without API call
-        // TODO: Replace with actual API call when backend is ready
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        // Call the actual presentation generation API
+        const response = await fetch(`${API_BASE}/presentations/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token') || 'admin-token'}`
+            },
+            body: JSON.stringify({
+                useCase: formData.topic,
+                customer: 'General Customer',
+                industry: 'General',
+                targetAudience: 'General Audience',
+                presentationLength: formData.slideCount <= 5 ? 'short' : formData.slideCount <= 10 ? 'medium' : 'long',
+                style: formData.style,
+                additionalRequirements: formData.requirements,
+                requirements: formData.requirements
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Failed to generate presentation');
+        }
+        
+        const result = await response.json();
         
         // Store the generated presentation ID
-        generatedPresentationId = Date.now();
+        generatedPresentationId = result.presentationId;
         
         // Show success message and enable download
         showGeneratedInfo();
@@ -325,7 +347,7 @@ async function handleGeneratePresentation(event) {
         
     } catch (error) {
         console.error('Error generating presentation:', error);
-        showNotification('Failed to generate presentation. Please try again.', 'error');
+        showNotification(`Failed to generate presentation: ${error.message}`, 'error');
         hideGenerationStatus();
     }
 }
@@ -607,20 +629,30 @@ async function downloadPresentation() {
     try {
         showNotification('Preparing download...', 'info');
         
-        // For now, create a sample download
-        // TODO: Replace with actual API call when backend is ready
-        const sampleContent = `Presentation: ${document.getElementById('topic').value}
-Slides: ${document.getElementById('slideCount').value}
-Style: ${document.getElementById('style').value}
-Requirements: ${document.getElementById('requirements').value}
-
-Generated on: ${new Date().toISOString()}`;
+        // Call the actual download API
+        const response = await fetch(`${API_BASE}/presentations/${generatedPresentationId}/download`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token') || 'admin-token'}`
+            }
+        });
         
-        const blob = new Blob([sampleContent], { type: 'text/plain' });
+        if (!response.ok) {
+            throw new Error('Failed to download presentation');
+        }
+        
+        // Get the filename from the response headers
+        const contentDisposition = response.headers.get('Content-Disposition');
+        const filename = contentDisposition 
+            ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
+            : `presentation-${generatedPresentationId}.pptx`;
+        
+        // Create blob and download
+        const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `presentation-${generatedPresentationId}.txt`;
+        a.download = filename;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -630,7 +662,7 @@ Generated on: ${new Date().toISOString()}`;
         
     } catch (error) {
         console.error('Download error:', error);
-        showNotification('Download failed. Please try again.', 'error');
+        showNotification(`Download failed: ${error.message}`, 'error');
     }
 }
 
