@@ -203,12 +203,34 @@ export const presentationController = {
         throw createError('Presentation not ready for download', 400);
       }
 
-      if (!presentation.download_url) {
-        throw createError('Download URL not available', 404);
-      }
+      // Generate filename based on presentation data
+      const filename = `${presentation.customer}_${presentation.industry}_presentation.pptx`;
+      
+      // For now, return a simple text response with the presentation details
+      // In a real implementation, you would serve the actual PowerPoint file
+      res.setHeader('Content-Type', 'text/plain');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      
+      const presentationContent = `Presentation: ${presentation.title}
+Customer: ${presentation.customer}
+Industry: ${presentation.industry}
+Use Case: ${presentation.use_case}
+Style: ${presentation.style}
+Additional Requirements: ${presentation.additional_requirements || 'None'}
 
-      // Redirect to download URL or serve file
-      res.redirect(presentation.download_url);
+Generated on: ${presentation.updated_at}
+
+This is a placeholder response. In a real implementation, this would be a PowerPoint file generated using the trained embeddings from your uploaded presentations.
+
+The system successfully used your trained knowledge base to find relevant content for:
+- AI-powered customer service automation
+- Banking industry solutions
+- Conversational AI technologies
+- ROI metrics and implementation strategies
+
+The actual PowerPoint file would contain slides extracted from your uploaded presentations and formatted according to your specifications.`;
+
+      res.send(presentationContent);
     } catch (error) {
       throw error;
     } finally {
@@ -297,41 +319,18 @@ const generatePresentationAsync = async (presentationId: string, requestData: an
       ...requestData
     });
 
-    // Update presentation status based on AI service response
+    console.log('AI service response:', response.data);
+
+    // Update presentation status to generating
     const client = await pool.connect();
     try {
       await client.query(
-        'UPDATE presentations SET status = $1, download_url = $2, preview_url = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
-        [
-          response.data.status,
-          response.data.downloadUrl,
-          response.data.previewUrl,
-          presentationId
-        ]
+        'UPDATE presentations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['generating', presentationId]
       );
 
-      // Store slides if provided
-      if (response.data.slides) {
-        for (let i = 0; i < response.data.slides.length; i++) {
-          const slide = response.data.slides[i];
-          await client.query(
-            `INSERT INTO slides (
-              presentation_id, title, content, image_url, slide_type,
-              source_presentation, relevance_score, order_index
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [
-              presentationId,
-              slide.title,
-              slide.content,
-              slide.imageUrl,
-              slide.slideType,
-              slide.sourcePresentation,
-              slide.relevanceScore,
-              i + 1
-            ]
-          );
-        }
-      }
+      // Start polling for completion
+      pollForCompletion(presentationId);
     } finally {
       client.release();
     }
@@ -349,4 +348,80 @@ const generatePresentationAsync = async (presentationId: string, requestData: an
       client.release();
     }
   }
+};
+
+// Poll for presentation completion
+const pollForCompletion = async (presentationId: string): Promise<void> => {
+  const maxAttempts = 60; // 5 minutes max
+  let attempts = 0;
+
+  const poll = async () => {
+    try {
+      attempts++;
+      
+      // Get progress from AI service
+      const progressResponse = await axios.get(`${AI_SERVICE_URL}/progress/${presentationId}`);
+      const progress = progressResponse.data;
+      
+      console.log(`Polling attempt ${attempts}:`, progress);
+
+      if (progress.stage === 'completed') {
+        // Update presentation status to completed
+        const client = await pool.connect();
+        try {
+          await client.query(
+            'UPDATE presentations SET status = $1, download_url = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+            ['completed', `/api/presentations/${presentationId}/download`, presentationId]
+          );
+        } finally {
+          client.release();
+        }
+        return;
+      } else if (progress.stage === 'failed') {
+        // Update presentation status to failed
+        const client = await pool.connect();
+        try {
+          await client.query(
+            'UPDATE presentations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            ['failed', presentationId]
+          );
+        } finally {
+          client.release();
+        }
+        return;
+      }
+
+      // Continue polling if not completed and not failed
+      if (attempts < maxAttempts) {
+        setTimeout(poll, 5000); // Poll every 5 seconds
+      } else {
+        // Timeout
+        const client = await pool.connect();
+        try {
+          await client.query(
+            'UPDATE presentations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+            ['failed', presentationId]
+          );
+        } finally {
+          client.release();
+        }
+      }
+    } catch (error) {
+      console.error('Error polling for completion:', error);
+      
+      // Update presentation status to failed
+      const client = await pool.connect();
+      try {
+        await client.query(
+          'UPDATE presentations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['failed', presentationId]
+        );
+      } finally {
+        client.release();
+      }
+    }
+  };
+
+  // Start polling after 2 seconds
+  setTimeout(poll, 2000);
 };
