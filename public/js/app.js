@@ -825,6 +825,20 @@ function addFileButtonEventListeners() {
             const fileName = button.getAttribute('data-file-name');
             deleteFile(fileId, fileName);
         }
+        
+        if (e.target.closest('.approve-btn')) {
+            const button = e.target.closest('.approve-btn');
+            const fileId = button.getAttribute('data-file-id');
+            const fileName = button.getAttribute('data-file-name');
+            approveFile(fileId, fileName);
+        }
+        
+        if (e.target.closest('.reject-btn')) {
+            const button = e.target.closest('.reject-btn');
+            const fileId = button.getAttribute('data-file-id');
+            const fileName = button.getAttribute('data-file-name');
+            rejectFile(fileId, fileName);
+        }
     });
 }
 
@@ -832,6 +846,20 @@ function createFileCard(file) {
     const fileSize = formatFileSize(file.size);
     const uploadDate = new Date(file.createdAt).toLocaleDateString();
     const statusColor = getStatusColor(file.status);
+    
+    // Show approval buttons for pending files
+    const approvalButtons = file.status === 'pending' ? `
+        <div class="flex space-x-2 mt-2">
+            <button class="approve-btn bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors" 
+                    data-file-id="${file.id}" data-file-name="${file.originalName}" title="Approve File">
+                <i class="fas fa-check mr-1"></i> Approve
+            </button>
+            <button class="reject-btn bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors" 
+                    data-file-id="${file.id}" data-file-name="${file.originalName}" title="Reject File">
+                <i class="fas fa-times mr-1"></i> Reject
+            </button>
+        </div>
+    ` : '';
     
     return `
         <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
@@ -854,6 +882,8 @@ function createFileCard(file) {
                     </div>
                     
                     ${file.userName ? `<p class="text-sm text-gray-600">Uploaded by: ${file.userName}</p>` : ''}
+                    
+                    ${approvalButtons}
                 </div>
                 
                 <div class="flex items-center space-x-2 ml-4">
@@ -933,6 +963,69 @@ async function deleteFile(fileId, fileName) {
     } catch (error) {
         console.error('Error deleting file:', error);
         showNotification(`Failed to delete file: ${error.message}`, 'error');
+    }
+}
+
+async function approveFile(fileId, fileName) {
+    if (!confirm(`Are you sure you want to approve "${fileName}"?`)) {
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/sources/${fileId}/approve`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                notes: 'Approved via admin interface'
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to approve file');
+        }
+        
+        showNotification('File approved successfully', 'success');
+        loadFiles(); // Reload the files list
+        
+    } catch (error) {
+        console.error('Error approving file:', error);
+        showNotification('Failed to approve file', 'error');
+    }
+}
+
+async function rejectFile(fileId, fileName) {
+    const reason = prompt(`Please provide a reason for rejecting "${fileName}":`);
+    if (!reason) {
+        return;
+    }
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/sources/${fileId}/reject`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                notes: reason
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to reject file');
+        }
+        
+        showNotification('File rejected successfully', 'success');
+        loadFiles(); // Reload the files list
+        
+    } catch (error) {
+        console.error('Error rejecting file:', error);
+        showNotification('Failed to reject file', 'error');
     }
 }
 
