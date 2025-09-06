@@ -315,6 +315,49 @@
                     </div>
                 </div>
                 
+                <!-- Training Section -->
+                <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-xl font-semibold">AI Training Center</h3>
+                        <div class="flex items-center space-x-4">
+                            <span id="trainingStatus" class="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
+                                Not Trained
+                            </span>
+                            <button id="trainNowBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fas fa-brain mr-2"></i>
+                                Train Now
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-3 gap-4 mb-4">
+                        <div class="text-center p-4 bg-blue-50 rounded-lg">
+                            <div class="text-2xl font-bold text-blue-600" id="totalFiles">0</div>
+                            <div class="text-sm text-gray-600">Total Files</div>
+                        </div>
+                        <div class="text-center p-4 bg-green-50 rounded-lg">
+                            <div class="text-2xl font-bold text-green-600" id="trainedFiles">0</div>
+                            <div class="text-sm text-gray-600">Trained Files</div>
+                        </div>
+                        <div class="text-center p-4 bg-purple-50 rounded-lg">
+                            <div class="text-2xl font-bold text-purple-600" id="embeddingsCount">0</div>
+                            <div class="text-sm text-gray-600">Embeddings</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Training Progress -->
+                    <div id="trainingProgress" class="hidden">
+                        <div class="mb-2 flex justify-between text-sm">
+                            <span>Training Progress</span>
+                            <span id="trainingPercentage">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="trainingProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div id="trainingMessage" class="text-sm text-gray-600 mt-2">Preparing training...</div>
+                    </div>
+                </div>
+
                 <div class="bg-white rounded-lg shadow-lg p-6">
                     <h3 class="text-xl font-semibold mb-4">Quick Actions</h3>
                     <div class="grid md:grid-cols-3 gap-4">

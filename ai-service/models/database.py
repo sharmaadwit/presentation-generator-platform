@@ -32,6 +32,21 @@ class DatabaseManager:
         if self.connection_pool:
             await self.connection_pool.close()
     
+    async def query(self, query: str, params: List[Any] = None):
+        """Execute a query and return results"""
+        try:
+            async with self.connection_pool.acquire() as conn:
+                if params:
+                    rows = await conn.fetch(query, *params)
+                else:
+                    rows = await conn.fetch(query)
+                
+                # Convert rows to list of dictionaries
+                return [dict(row) for row in rows]
+        except Exception as e:
+            logger.error(f"Database query error: {e}")
+            raise e
+    
     async def update_progress(
         self,
         presentation_id: str,

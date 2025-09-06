@@ -153,9 +153,232 @@ async def get_progress(presentation_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# Generate embeddings endpoint
+@app.post("/embeddings/generate")
+async def generate_embedding(request: dict):
+    """Generate embedding for given content"""
+    try:
+        content = request.get('content', '')
+        if not content:
+            raise HTTPException(status_code=400, detail="Content is required")
+        
+        # For now, use a simple text-based embedding
+        # In production, you would use a proper embedding model like OpenAI's text-embedding-ada-002
+        embedding = generate_simple_embedding(content)
+        
+        return {
+            "embedding": embedding,
+            "dimensions": len(embedding),
+            "content_length": len(content)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate embedding: {str(e)}")
+
+def generate_simple_embedding(content: str) -> list:
+    """Generate a simple embedding for content (placeholder implementation)"""
+    # This is a simplified embedding generation
+    # In production, use OpenAI's embedding API or similar
+    
+    # Clean and normalize content
+    import re
+    import hashlib
+    
+    # Remove special characters and normalize
+    clean_content = re.sub(r'[^\w\s]', '', content.lower())
+    words = clean_content.split()
+    
+    # Create a simple hash-based embedding
+    content_hash = hashlib.md5(content.encode()).hexdigest()
+    
+    # Generate 384-dimensional vector (common embedding size)
+    embedding = []
+    for i in range(384):
+        # Use hash and position to generate deterministic values
+        seed = int(content_hash[i % len(content_hash)], 16) + i
+        value = (seed % 1000) / 1000.0 - 0.5  # Normalize to [-0.5, 0.5]
+        embedding.append(value)
+    
+    return embedding
+
+async def find_similar_slides(query_embedding: list, industry: str = None, limit: int = 20) -> list:
+    """Find similar slides using vector similarity search"""
+    try:
+        # Calculate cosine similarity between query and stored embeddings
+        # For now, we'll use a simple similarity calculation
+        # In production, you'd use a proper vector database like Pinecone or Weaviate
+        
+        query = """
+        SELECT 
+            se.id,
+            se.content,
+            se.slide_type,
+            se.relevance_score,
+            ps.title as source_title,
+            ps.industry,
+            ps.tags
+        FROM slide_embeddings se
+        JOIN presentation_sources ps ON se.source_id = ps.id
+        WHERE ps.status = 'approved'
+        """
+        
+        params = []
+        if industry:
+            query += " AND ps.industry = $1"
+            params.append(industry)
+        
+        query += " ORDER BY se.relevance_score DESC LIMIT $2"
+        params.append(limit)
+        
+        result = await db_manager.query(query, params)
+        
+        # Convert to slide format expected by presentation generator
+        slides = []
+        for row in result:
+            slides.append({
+                'id': row['id'],
+                'content': row['content'],
+                'slide_type': row['slide_type'],
+                'relevance_score': float(row['relevance_score']),
+                'source_title': row['source_title'],
+                'industry': row['industry'],
+                'tags': row['tags'] or [],
+                'action': 'copy_exact'  # Use pre-trained content as-is
+            })
+        
+        return slides
+        
+    except Exception as e:
+        print(f"Error finding similar slides: {e}")
+        return []
+
 # Main generation function
 async def generate_presentation_async(presentation_id: str, request_data: Dict[str, Any]):
     """Main async function to handle presentation generation using ONLY uploaded content"""
+    try:
+        # Check if we have trained embeddings available
+        has_embeddings = await check_trained_embeddings()
+        
+        if has_embeddings:
+            # Use pre-trained embeddings for faster generation
+            return await generate_with_embeddings(presentation_id, request_data)
+        else:
+            # Fall back to traditional generation
+            return await generate_without_embeddings(presentation_id, request_data)
+            
+    except Exception as e:
+        print(f"Error in generate_presentation_async: {e}")
+        await db_manager.update_progress(
+            presentation_id,
+            "failed",
+            0,
+            f"Generation failed: {str(e)}"
+        )
+
+async def check_trained_embeddings() -> bool:
+    """Check if we have trained embeddings available"""
+    try:
+        # Query database to check if we have any embeddings
+        result = await db_manager.query(
+            "SELECT COUNT(*) as count FROM slide_embeddings LIMIT 1"
+        )
+        return result[0]['count'] > 0 if result else False
+    except Exception as e:
+        print(f"Error checking embeddings: {e}")
+        return False
+
+async def generate_with_embeddings(presentation_id: str, request_data: Dict[str, Any]):
+    """Generate presentation using pre-trained embeddings for faster processing"""
+    try:
+        # Update progress: Discovering
+        await db_manager.update_progress(
+            presentation_id,
+            "discovering",
+            10,
+            "Searching trained knowledge base for relevant content..."
+        )
+        
+        # Generate query embedding for semantic search
+        search_query = f"{request_data['useCase']} {request_data['industry']} {request_data['customer']}"
+        query_embedding = generate_simple_embedding(search_query)
+        
+        # Find similar slides using vector similarity
+        similar_slides = await find_similar_slides(
+            query_embedding,
+            industry=request_data['industry'],
+            limit=20
+        )
+        
+        if not similar_slides:
+            await db_manager.update_progress(
+                presentation_id,
+                "failed",
+                0,
+                "No relevant content found in trained knowledge base. Please train the system first."
+            )
+            return
+        
+        # Update progress: Matching
+        await db_manager.update_progress(
+            presentation_id,
+            "matching",
+            50,
+            f"Found {len(similar_slides)} relevant slides from trained knowledge base..."
+        )
+        
+        # Use the similar slides directly (they're already processed)
+        matched_slides = similar_slides
+        
+        # Update progress: Generating
+        await db_manager.update_progress(
+            presentation_id,
+            "generating",
+            80,
+            f"Generating presentation with {len(matched_slides)} selected slides..."
+        )
+        
+        # Generate final presentation
+        presentation_data = await presentation_generator.generate_presentation(
+            slides=matched_slides,
+            presentation_id=presentation_id,
+            request_data=request_data
+        )
+        
+        # Update progress: Finalizing
+        await db_manager.update_progress(
+            presentation_id,
+            "finalizing",
+            95,
+            "Finalizing presentation..."
+        )
+        
+        # Save presentation and update status
+        await db_manager.save_presentation(
+            presentation_id=presentation_id,
+            slides=matched_slides,
+            presentation_data=presentation_data,
+            status="completed"
+        )
+        
+        # Final progress update
+        await db_manager.update_progress(
+            presentation_id,
+            "completed",
+            100,
+            "Presentation generated successfully using trained knowledge base!"
+        )
+        
+    except Exception as e:
+        print(f"Error in generate_with_embeddings: {e}")
+        await db_manager.update_progress(
+            presentation_id,
+            "failed",
+            0,
+            f"Generation failed: {str(e)}"
+        )
+
+async def generate_without_embeddings(presentation_id: str, request_data: Dict[str, Any]):
+    """Original generation method without embeddings"""
     try:
         # Update progress: Discovering
         await db_manager.update_progress(

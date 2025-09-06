@@ -15,6 +15,7 @@ import { userRoutes } from './routes/user';
 import { uploadRoutes } from './routes/upload';
 import { sourceRoutes } from './routes/sources';
 import { analyticsRoutes } from './routes/analytics';
+import { trainingRoutes } from './routes/training';
 import { connectDatabase } from './config/database';
 
 // Load environment variables
@@ -64,6 +65,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/sources', sourceRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/training', trainingRoutes);
 
 // Serve static files from public directory
 const publicPath = path.join(__dirname, '../../public');

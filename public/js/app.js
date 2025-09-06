@@ -13,6 +13,7 @@ const API_BASE = '/api';
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
+    initializeTrainingSystem();
 });
 
 function initializeApp() {
@@ -938,6 +939,174 @@ async function deleteFile(fileId, fileName) {
 // Action functions
 function viewSource(id) {
     showNotification('View source functionality coming soon!', 'info');
+}
+
+// ==================== TRAINING SYSTEM ====================
+
+function initializeTrainingSystem() {
+    // Add event listener for Train Now button
+    const trainNowBtn = document.getElementById('trainNowBtn');
+    if (trainNowBtn) {
+        trainNowBtn.addEventListener('click', handleTrainNow);
+    }
+    
+    // Load training status on page load
+    loadTrainingStatus();
+}
+
+async function loadTrainingStatus() {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        
+        const response = await fetch(`${API_BASE}/training/status`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            updateTrainingUI(data);
+        }
+    } catch (error) {
+        console.error('Error loading training status:', error);
+    }
+}
+
+function updateTrainingUI(data) {
+    // Update training status
+    const statusElement = document.getElementById('trainingStatus');
+    if (statusElement) {
+        statusElement.textContent = data.status || 'Not Trained';
+        statusElement.className = `px-3 py-1 rounded-full text-sm ${
+            data.status === 'Trained' ? 'bg-green-100 text-green-700' : 
+            data.status === 'Training' ? 'bg-yellow-100 text-yellow-700' : 
+            'bg-gray-100 text-gray-700'
+        }`;
+    }
+    
+    // Update statistics
+    const totalFiles = document.getElementById('totalFiles');
+    const trainedFiles = document.getElementById('trainedFiles');
+    const embeddingsCount = document.getElementById('embeddingsCount');
+    
+    if (totalFiles) totalFiles.textContent = data.totalFiles || 0;
+    if (trainedFiles) trainedFiles.textContent = data.trainedFiles || 0;
+    if (embeddingsCount) embeddingsCount.textContent = data.embeddingsCount || 0;
+    
+    // Update train button state
+    const trainBtn = document.getElementById('trainNowBtn');
+    if (trainBtn) {
+        trainBtn.disabled = data.status === 'Training';
+        trainBtn.innerHTML = data.status === 'Training' ? 
+            '<i class="fas fa-spinner fa-spin mr-2"></i>Training...' : 
+            '<i class="fas fa-brain mr-2"></i>Train Now';
+    }
+}
+
+async function handleTrainNow() {
+    const trainBtn = document.getElementById('trainNowBtn');
+    const progressDiv = document.getElementById('trainingProgress');
+    const progressBar = document.getElementById('trainingProgressBar');
+    const progressPercentage = document.getElementById('trainingPercentage');
+    const progressMessage = document.getElementById('trainingMessage');
+    
+    try {
+        // Show progress UI
+        if (progressDiv) progressDiv.classList.remove('hidden');
+        if (trainBtn) trainBtn.disabled = true;
+        
+        // Start training
+        const token = localStorage.getItem('token');
+        const response = await fetch(`${API_BASE}/training/start`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to start training');
+        }
+        
+        const data = await response.json();
+        showNotification('Training started successfully!', 'success');
+        
+        // Poll for progress
+        pollTrainingProgress();
+        
+    } catch (error) {
+        console.error('Error starting training:', error);
+        showNotification('Failed to start training: ' + error.message, 'error');
+        
+        // Reset UI
+        if (trainBtn) trainBtn.disabled = false;
+        if (progressDiv) progressDiv.classList.add('hidden');
+    }
+}
+
+async function pollTrainingProgress() {
+    const progressBar = document.getElementById('trainingProgressBar');
+    const progressPercentage = document.getElementById('trainingPercentage');
+    const progressMessage = document.getElementById('trainingMessage');
+    const trainBtn = document.getElementById('trainNowBtn');
+    
+    const pollInterval = setInterval(async () => {
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE}/training/progress`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                // Update progress bar
+                if (progressBar && progressPercentage) {
+                    const percentage = data.progress || 0;
+                    progressBar.style.width = `${percentage}%`;
+                    progressPercentage.textContent = `${percentage}%`;
+                }
+                
+                // Update message
+                if (progressMessage) {
+                    progressMessage.textContent = data.message || 'Training in progress...';
+                }
+                
+                // Check if training is complete
+                if (data.status === 'completed' || data.status === 'failed') {
+                    clearInterval(pollInterval);
+                    
+                    if (data.status === 'completed') {
+                        showNotification('Training completed successfully!', 'success');
+                        if (trainBtn) {
+                            trainBtn.disabled = false;
+                            trainBtn.innerHTML = '<i class="fas fa-brain mr-2"></i>Train Now';
+                        }
+                    } else {
+                        showNotification('Training failed: ' + (data.error || 'Unknown error'), 'error');
+                        if (trainBtn) {
+                            trainBtn.disabled = false;
+                            trainBtn.innerHTML = '<i class="fas fa-brain mr-2"></i>Train Now';
+                        }
+                    }
+                    
+                    // Reload training status
+                    loadTrainingStatus();
+                }
+            }
+        } catch (error) {
+            console.error('Error polling training progress:', error);
+            clearInterval(pollInterval);
+            showNotification('Error checking training progress', 'error');
+        }
+    }, 2000); // Poll every 2 seconds
 }
 
 function deleteSource(id) {

@@ -173,6 +173,63 @@ const initializeTables = async (): Promise<void> => {
       ADD COLUMN IF NOT EXISTS user_type VARCHAR(50) DEFAULT 'user'
     `);
 
+    // Training system tables
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS training_sessions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        status VARCHAR(50) NOT NULL, -- 'training', 'completed', 'failed'
+        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP,
+        created_by UUID REFERENCES users(id),
+        total_files INTEGER DEFAULT 0,
+        processed_files INTEGER DEFAULT 0,
+        total_embeddings INTEGER DEFAULT 0,
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS training_progress (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        training_session_id UUID REFERENCES training_sessions(id) ON DELETE CASCADE,
+        progress INTEGER NOT NULL, -- 0-100
+        message TEXT,
+        stage VARCHAR(50), -- 'initializing', 'processing', 'completed', 'failed'
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS slide_embeddings (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        source_id UUID REFERENCES presentation_sources(id) ON DELETE CASCADE,
+        slide_id UUID REFERENCES source_slides(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        embedding JSONB NOT NULL, -- Vector embedding as JSON array
+        slide_type VARCHAR(50) NOT NULL,
+        relevance_score DECIMAL(3,2) DEFAULT 0.5,
+        training_session_id UUID REFERENCES training_sessions(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Add indexes for better performance
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_slide_embeddings_source_id 
+      ON slide_embeddings(source_id)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_slide_embeddings_training_session 
+      ON slide_embeddings(training_session_id)
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_training_sessions_status 
+      ON training_sessions(status)
+    `);
+
     // Analytics tables for tracking usage patterns
     await client.query(`
       CREATE TABLE IF NOT EXISTS analytics_events (
