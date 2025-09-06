@@ -360,10 +360,49 @@ export const uploadController = {
       console.log(`🔍 Looking for file at: ${filePath}`);
       console.log(`📁 File exists: ${fs.existsSync(filePath)}`);
 
-      // Check if file exists on filesystem
-      if (!file.file_path || !fs.existsSync(filePath)) {
+      // If file doesn't exist at the resolved path, try alternative locations
+      if (!fs.existsSync(filePath)) {
+        console.log(`🔄 Trying alternative paths...`);
+        
+        // Try with different base directories
+        const alternativePaths = [
+          path.resolve('/app', file.file_path), // Railway production path
+          path.resolve('/app/backend', file.file_path), // Backend subdirectory
+          path.resolve(process.cwd(), 'backend', file.file_path), // Local backend path
+          path.resolve(process.cwd(), '..', 'backend', file.file_path), // Parent backend path
+        ];
+
+        for (const altPath of alternativePaths) {
+          console.log(`🔍 Trying alternative path: ${altPath}`);
+          if (fs.existsSync(altPath)) {
+            console.log(`✅ Found file at: ${altPath}`);
+            filePath = altPath;
+            break;
+          }
+        }
+
+        // If still not found, check what files actually exist in upload directories
+        const uploadDirs = [
+          '/app/uploads',
+          '/app/backend/uploads',
+          path.resolve(process.cwd(), 'uploads'),
+          path.resolve(process.cwd(), 'backend/uploads'),
+        ];
+
+        for (const uploadDir of uploadDirs) {
+          if (fs.existsSync(uploadDir)) {
+            console.log(`📂 Checking upload directory: ${uploadDir}`);
+            const files = fs.readdirSync(uploadDir);
+            console.log(`📋 Files in ${uploadDir}:`, files.slice(0, 5)); // Show first 5 files
+          }
+        }
+      }
+
+      // Final check if file exists
+      if (!fs.existsSync(filePath)) {
         console.error(`❌ File not found at: ${filePath}`);
         console.error(`❌ Original path: ${file.file_path}`);
+        console.error(`❌ Current working directory: ${process.cwd()}`);
         throw createError('File not found on server', 404);
       }
 
