@@ -257,7 +257,25 @@ async function startTrainingProcess(trainingId: string) {
         for (const slide of slides) {
           const embedding = await generateEmbedding(slide.content);
           
-          // Store embedding
+          // First, insert the slide into source_slides table
+          const slideId = require('uuid').v4();
+          await client.query(
+            `INSERT INTO source_slides (
+              id, source_id, slide_index, title, content, 
+              slide_type, metadata
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              slideId,
+              file.id,
+              0, // slide_index
+              slide.title || `Slide from ${file.title}`,
+              slide.content,
+              slide.type || 'content',
+              JSON.stringify({ training_session_id: trainingId })
+            ]
+          );
+          
+          // Then, store the embedding
           await client.query(
             `INSERT INTO slide_embeddings (
               id, source_id, slide_id, content, embedding, 
@@ -266,7 +284,7 @@ async function startTrainingProcess(trainingId: string) {
             [
               require('uuid').v4(),
               file.id,
-              slide.id,
+              slideId, // Use the slide ID we just created
               slide.content,
               JSON.stringify(embedding),
               slide.type || 'content',
