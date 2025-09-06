@@ -486,8 +486,13 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     }
     
     // Parse PowerPoint file
+    console.log(`🔍 Attempting to parse file: ${file.file_path}`);
+    console.log(`📁 File exists: ${fs.existsSync(file.file_path)}`);
+    console.log(`📏 File size: ${fs.statSync(file.file_path).size} bytes`);
+    
     const pptxData = await pptx2json(file.file_path);
     console.log(`📊 Parsed PowerPoint file with ${pptxData.slides?.length || 0} slides`);
+    console.log(`📋 First slide preview:`, pptxData.slides?.[0]);
     
     if (!pptxData.slides || pptxData.slides.length === 0) {
       console.log('No slides found in PowerPoint file, using fallback content');
@@ -521,8 +526,14 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     return slides;
     
   } catch (error) {
-    console.error('Error in PowerPoint file extraction:', error);
-    console.log('Falling back to structured content based on file metadata');
+    console.error('❌ Error in PowerPoint file extraction:', error);
+    console.error('❌ Error details:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      filePath: file.file_path,
+      fileName: file.title
+    });
+    console.log('🔄 Falling back to structured content based on file metadata');
     return createFallbackSlides(file);
   }
 }
