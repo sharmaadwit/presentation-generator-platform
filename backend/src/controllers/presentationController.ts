@@ -626,15 +626,29 @@ const generateFallbackPresentation = async (presentationId: string, requestData:
         console.log(`🎯 Found ${similarSlidesResult.rows.length} similar slides from trained data`);
         
         // Convert to slide format
-        slides = similarSlidesResult.rows.map((row, index) => ({
-          title: row.source_title || `Slide ${index + 1}`,
-          content: row.content,
-          slideType: row.slide_type || 'content',
-          sourceTitle: row.source_title,
-          industry: row.industry,
-          tags: row.tags || [],
-          relevanceScore: parseFloat(row.relevance_score) || 0
-        }));
+        slides = similarSlidesResult.rows.map((row, index) => {
+          // Extract a better title from the content
+          let slideTitle = `Slide ${index + 1}`;
+          if (row.content) {
+            // Try to extract title from first line or use first 50 characters
+            const firstLine = row.content.split('\n')[0].trim();
+            if (firstLine.length > 0 && firstLine.length < 100) {
+              slideTitle = firstLine;
+            } else {
+              slideTitle = row.content.substring(0, 50).trim() + '...';
+            }
+          }
+          
+          return {
+            title: slideTitle,
+            content: row.content,
+            slideType: row.slide_type || 'content',
+            sourceTitle: row.source_title,
+            industry: row.industry,
+            tags: row.tags || [],
+            relevanceScore: parseFloat(row.relevance_score) || 0
+          };
+        });
         
       } else {
         // Fallback to approved sources without embeddings
@@ -660,8 +674,19 @@ const generateFallbackPresentation = async (presentationId: string, requestData:
           );
           
           sourceSlidesResult.rows.forEach((slide, index) => {
+            // Extract a better title from the slide content
+            let slideTitle = `${source.title} - Slide ${index + 1}`;
+            if (slide.content) {
+              const firstLine = slide.content.split('\n')[0].trim();
+              if (firstLine.length > 0 && firstLine.length < 100) {
+                slideTitle = firstLine;
+              } else {
+                slideTitle = slide.content.substring(0, 50).trim() + '...';
+              }
+            }
+            
             slides.push({
-              title: `${source.title} - Slide ${index + 1}`,
+              title: slideTitle,
               content: slide.content,
               slideType: slide.slide_type || 'content',
               sourceTitle: source.title,
