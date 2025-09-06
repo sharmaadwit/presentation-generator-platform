@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-BACKEND_PORT=3000
+BACKEND_PORT=5000
 AI_SERVICE_PORT=8000
 DATABASE_URL="postgresql://localhost:5432/presentation_generator"
 TEST_USER_ID="00000000-0000-0000-0000-000000000001"
