@@ -404,11 +404,13 @@ export const uploadController = {
           path.resolve(process.cwd(), '..', 'uploads'),
         ];
 
+        console.log(`🔍 Searching for file: ${fileName}`);
         for (const uploadDir of uploadDirs) {
+          console.log(`📂 Checking upload directory: ${uploadDir}`);
           if (fs.existsSync(uploadDir)) {
-            console.log(`📂 Checking upload directory: ${uploadDir}`);
             const files = fs.readdirSync(uploadDir);
             console.log(`📋 Files in ${uploadDir}:`, files.slice(0, 10)); // Show first 10 files
+            console.log(`📊 Total files in ${uploadDir}: ${files.length}`);
             
             // Check if our target file is in this directory
             if (files.includes(fileName)) {
@@ -416,6 +418,24 @@ export const uploadController = {
               console.log(`✅ Found target file in ${uploadDir}: ${foundPath}`);
               filePath = foundPath;
               break;
+            } else {
+              console.log(`❌ Target file ${fileName} not found in ${uploadDir}`);
+            }
+          } else {
+            console.log(`❌ Directory does not exist: ${uploadDir}`);
+          }
+        }
+
+        // If still not found, search for files with similar names
+        if (!fs.existsSync(filePath)) {
+          console.log(`🔍 Searching for files with similar names...`);
+          for (const uploadDir of uploadDirs) {
+            if (fs.existsSync(uploadDir)) {
+              const files = fs.readdirSync(uploadDir);
+              const similarFiles = files.filter(f => f.includes('files-1757064510663') || f.includes('140791562'));
+              if (similarFiles.length > 0) {
+                console.log(`🔍 Found similar files in ${uploadDir}:`, similarFiles);
+              }
             }
           }
         }
