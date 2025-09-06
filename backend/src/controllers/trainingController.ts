@@ -384,7 +384,7 @@ async function extractSlidesFromFile(file: any): Promise<any[]> {
     if (error instanceof Error && ('code' in error) && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
       console.log('AI service not available, creating mock slides for testing');
       return [{
-        id: `mock-slide-${file.id}-1`,
+        id: require('uuid').v4(), // Generate proper UUID
         content: `Mock slide content for ${file.title}`,
         slide_type: 'content',
         source_id: file.id
@@ -395,7 +395,7 @@ async function extractSlidesFromFile(file: any): Promise<any[]> {
     if (error instanceof Error && 'response' in error && (error as any).response?.status === 404) {
       console.log('AI service endpoint not found (404), creating mock slides for testing');
       return [{
-        id: `mock-slide-${file.id}-1`,
+        id: require('uuid').v4(), // Generate proper UUID
         content: `Mock slide content for ${file.title}`,
         slide_type: 'content',
         source_id: file.id
