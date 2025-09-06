@@ -92,8 +92,9 @@ export const trainingController = {
         [trainingId, 'training', req.user!.id]
       );
       
-      // Start training process in background
-      startTrainingProcess(trainingId);
+      // Start training process in background with timeout
+      console.log(`🚀 Starting background training process for ID: ${trainingId}`);
+      startTrainingProcessWithTimeout(trainingId);
       
       res.json({
         message: 'Training started successfully',
@@ -198,12 +199,54 @@ export const trainingController = {
   }
 };
 
+// Wrapper function with timeout
+async function startTrainingProcessWithTimeout(trainingId: string) {
+  console.log(`⏰ Starting training with 10-minute timeout for ID: ${trainingId}`);
+  
+  try {
+    await Promise.race([
+      startTrainingProcess(trainingId),
+      new Promise((_, reject) => 
+        setTimeout(() => {
+          console.error(`⏰ Training timeout after 10 minutes for ID: ${trainingId}`);
+          reject(new Error('Training timeout after 10 minutes'));
+        }, 10 * 60 * 1000) // 10 minutes
+      )
+    ]);
+  } catch (error) {
+    console.error(`❌ Training failed or timed out for ID: ${trainingId}:`, error);
+    
+    // Mark training as failed
+    const client = await pool.connect();
+    try {
+      await client.query(
+        'UPDATE training_sessions SET status = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['failed', trainingId]
+      );
+      
+      await updateTrainingProgress(
+        client, 
+        trainingId, 
+        0, 
+        `Training failed: ${error instanceof Error ? error.message : 'Timeout or unknown error'}`,
+        'failed'
+      );
+    } catch (dbError) {
+      console.error('Error updating failed training status:', dbError);
+    } finally {
+      client.release();
+    }
+  }
+}
+
 // Background training process
 async function startTrainingProcess(trainingId: string) {
+  console.log(`🚀 Starting training process with ID: ${trainingId}`);
   const client = await pool.connect();
   
   try {
     // Update progress: Initializing
+    console.log(`📝 Updating progress: Initializing training process...`);
     await updateTrainingProgress(client, trainingId, 0, 'Initializing training process...', 'initializing');
     
     // Get all uploaded files that need training
@@ -218,11 +261,15 @@ async function startTrainingProcess(trainingId: string) {
     const files = filesResult.rows;
     const totalFiles = files.length;
     
+    console.log(`📊 Found ${totalFiles} files to process`);
+    console.log(`📋 Files:`, files.map(f => ({ id: f.id, title: f.title, status: f.status })));
+    
     if (totalFiles === 0) {
       // Debug: Check what files exist and their status
       const debugResult = await client.query('SELECT id, title, status FROM presentation_sources ORDER BY created_at DESC LIMIT 10');
       console.log('Debug - All files:', debugResult.rows);
       
+      console.log(`❌ No files to train, marking as completed`);
       await updateTrainingProgress(client, trainingId, 100, 'No approved files to train', 'completed');
       await client.query(
         'UPDATE training_sessions SET status = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2',
@@ -345,6 +392,7 @@ async function startTrainingProcess(trainingId: string) {
     }
     
     // Complete training
+    console.log(`🎉 Training completed! Processed ${processedFiles} files, created ${totalEmbeddings} embeddings`);
     await updateTrainingProgress(
       client, 
       trainingId, 
@@ -353,10 +401,13 @@ async function startTrainingProcess(trainingId: string) {
       'completed'
     );
     
+    console.log(`✅ Updating training session status to completed`);
     await client.query(
       'UPDATE training_sessions SET status = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2',
       ['completed', trainingId]
     );
+    
+    console.log(`🏁 Training process finished successfully`);
     
   } catch (error) {
     console.error('Training process error:', error);
