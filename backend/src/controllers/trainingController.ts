@@ -378,9 +378,14 @@ async function extractSlidesFromFile(file: any): Promise<any[]> {
     });
     
     // Call AI service to extract slides
+    // Fix file path to be relative to project root
+    const fullFilePath = file.file_path.startsWith('uploads/') ? 
+      `../backend/${file.file_path}` : 
+      file.file_path;
+    
     const response = await axios.post(`${AI_SERVICE_URL}/upload/process`, {
       uploadId: file.id,
-      filePath: file.file_path,
+      filePath: fullFilePath,
       mimeType: file.mime_type,
       title: file.title,
       description: file.description,

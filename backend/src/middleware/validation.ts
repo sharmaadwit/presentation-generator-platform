@@ -21,7 +21,8 @@ const presentationRequestSchema = Joi.object({
   targetAudience: Joi.string().max(200).optional(),
   presentationLength: Joi.string().valid('short', 'medium', 'long').optional(),
   style: Joi.string().valid('professional', 'creative', 'minimalist', 'corporate').optional(),
-  additionalRequirements: Joi.string().max(1000).optional()
+  additionalRequirements: Joi.string().max(1000).optional(),
+  requirements: Joi.string().max(1000).optional()
 });
 
 const scrapingRequestSchema = Joi.object({
