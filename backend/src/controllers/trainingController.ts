@@ -205,7 +205,7 @@ async function startTrainingProcess(trainingId: string) {
       `SELECT ps.*, se.id as embedding_id 
        FROM presentation_sources ps 
        LEFT JOIN slide_embeddings se ON ps.id = se.source_id 
-       WHERE ps.status = 'approved'
+       WHERE ps.status IN ('approved', 'trained')
        ORDER BY ps.created_at ASC`
     );
     
@@ -213,8 +213,11 @@ async function startTrainingProcess(trainingId: string) {
     const totalFiles = files.length;
     
     if (totalFiles === 0) {
+      // Debug: Check what files exist and their status
+      const debugResult = await client.query('SELECT id, title, status FROM presentation_sources ORDER BY created_at DESC LIMIT 10');
+      console.log('Debug - All files:', debugResult.rows);
       
-      await updateTrainingProgress(client, trainingId, 100, 'No files to train', 'completed');
+      await updateTrainingProgress(client, trainingId, 100, 'No approved files to train', 'completed');
       await client.query(
         'UPDATE training_sessions SET status = $1, completed_at = CURRENT_TIMESTAMP WHERE id = $2',
         ['completed', trainingId]
