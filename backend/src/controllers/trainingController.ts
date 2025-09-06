@@ -6,6 +6,9 @@ import axios from 'axios';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
+// Debug: Log the AI service URL being used
+console.log('AI_SERVICE_URL:', AI_SERVICE_URL);
+
 export const trainingController = {
   // Get training status and statistics
   getTrainingStatus: async (req: AuthRequest, res: Response): Promise<void> => {
@@ -348,6 +351,14 @@ async function updateTrainingProgress(
 // Helper function to extract slides from file
 async function extractSlidesFromFile(file: any): Promise<any[]> {
   try {
+    console.log(`Attempting to call AI service at: ${AI_SERVICE_URL}/upload/process`);
+    console.log(`File data:`, {
+      uploadId: file.id,
+      filePath: file.file_path,
+      mimeType: file.mime_type,
+      title: file.title
+    });
+    
     // Call AI service to extract slides
     const response = await axios.post(`${AI_SERVICE_URL}/upload/process`, {
       uploadId: file.id,
@@ -358,16 +369,31 @@ async function extractSlidesFromFile(file: any): Promise<any[]> {
       industry: file.industry,
       tags: file.tags
     }, {
-      timeout: 30000 // 30 second timeout
+      timeout: 30000, // 30 second timeout
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
+    console.log('AI service response:', response.data);
     return response.data.slides || [];
   } catch (error) {
     console.error('Error extracting slides from AI service:', error);
     
-    // If AI service is not available, create mock slides for testing
+    // Check if it's a connection error
     if (error instanceof Error && ('code' in error) && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
       console.log('AI service not available, creating mock slides for testing');
+      return [{
+        id: `mock-slide-${file.id}-1`,
+        content: `Mock slide content for ${file.title}`,
+        slide_type: 'content',
+        source_id: file.id
+      }];
+    }
+    
+    // For 404 errors, also create mock slides
+    if (error instanceof Error && 'response' in error && (error as any).response?.status === 404) {
+      console.log('AI service endpoint not found (404), creating mock slides for testing');
       return [{
         id: `mock-slide-${file.id}-1`,
         content: `Mock slide content for ${file.title}`,
@@ -383,14 +409,33 @@ async function extractSlidesFromFile(file: any): Promise<any[]> {
 // Helper function to generate embedding
 async function generateEmbedding(content: string): Promise<number[]> {
   try {
+    console.log(`Attempting to call AI service at: ${AI_SERVICE_URL}/embeddings/generate`);
+    
     // Call AI service to generate embedding
     const response = await axios.post(`${AI_SERVICE_URL}/embeddings/generate`, {
       content: content
+    }, {
+      timeout: 10000, // 10 second timeout
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
+    console.log('AI service embedding response:', response.data);
     return response.data.embedding || [];
   } catch (error) {
     console.error('Error generating embedding:', error);
+    
+    // Check if it's a connection error
+    if (error instanceof Error && ('code' in error) && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
+      console.log('AI service not available, using fallback embedding');
+    }
+    
+    // For 404 errors, also use fallback
+    if (error instanceof Error && 'response' in error && (error as any).response?.status === 404) {
+      console.log('AI service endpoint not found (404), using fallback embedding');
+    }
+    
     // Return a simple hash-based embedding as fallback
     return generateSimpleEmbedding(content);
   }
