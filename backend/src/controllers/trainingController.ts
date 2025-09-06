@@ -5,6 +5,7 @@ import { createError } from '../middleware/errorHandler';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+const pptx2json = require('pptx2json');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -473,83 +474,176 @@ function generateSimpleEmbedding(content: string): number[] {
   return embedding;
 }
 
-// Direct slide extraction without AI service
+// Real PowerPoint file extraction without AI service
 async function extractSlidesDirectly(file: any): Promise<any[]> {
   try {
-    console.log(`📄 Extracting slides directly from file: ${file.title}`);
+    console.log(`📄 Extracting real slides from PowerPoint file: ${file.title}`);
     
-    // For now, create structured content based on file metadata
-    // In a real implementation, you would use a library like 'pptx2json' or 'officegen'
+    // Check if file exists
+    if (!fs.existsSync(file.file_path)) {
+      console.error(`File not found: ${file.file_path}`);
+      return createFallbackSlides(file);
+    }
+    
+    // Parse PowerPoint file
+    const pptxData = await pptx2json(file.file_path);
+    console.log(`📊 Parsed PowerPoint file with ${pptxData.slides?.length || 0} slides`);
+    
+    if (!pptxData.slides || pptxData.slides.length === 0) {
+      console.log('No slides found in PowerPoint file, using fallback content');
+      return createFallbackSlides(file);
+    }
+    
     const slides = [];
     
-    // Create a title slide
-    slides.push({
-      id: require('uuid').v4(),
-      content: `Welcome to ${file.title}\n\nThis presentation covers ${file.industry} industry topics and best practices.`,
-      slide_type: 'title',
-      source_id: file.id,
-      relevance_score: 0.8
-    });
-    
-    // Create content slides based on file metadata
-    if (file.industry) {
-      slides.push({
-        id: require('uuid').v4(),
-        content: `Industry Overview: ${file.industry}\n\nKey trends and challenges in the ${file.industry} sector.`,
-        slide_type: 'content',
-        source_id: file.id,
-        relevance_score: 0.7
-      });
+    // Extract each slide
+    for (let i = 0; i < pptxData.slides.length; i++) {
+      const slide = pptxData.slides[i];
+      const slideContent = extractSlideContent(slide);
+      
+      if (slideContent.content && slideContent.content.trim().length > 0) {
+        slides.push({
+          id: require('uuid').v4(),
+          content: slideContent.content,
+          slide_type: slideContent.type,
+          source_id: file.id,
+          relevance_score: calculateRelevanceScore(slideContent.content, file.industry, file.tags)
+        });
+      }
     }
     
-    if (file.tags && file.tags.length > 0) {
-      slides.push({
-        id: require('uuid').v4(),
-        content: `Key Topics:\n${file.tags.map((tag: string, index: number) => `${index + 1}. ${tag}`).join('\n')}`,
-        slide_type: 'content',
-        source_id: file.id,
-        relevance_score: 0.6
-      });
+    if (slides.length === 0) {
+      console.log('No valid content extracted, using fallback slides');
+      return createFallbackSlides(file);
     }
     
-    // Add some generic business content
-    slides.push({
-      id: require('uuid').v4(),
-      content: `Business Strategy\n\nStrategic planning and implementation for ${file.industry} organizations.`,
-      slide_type: 'content',
-      source_id: file.id,
-      relevance_score: 0.5
-    });
-    
-    slides.push({
-      id: require('uuid').v4(),
-      content: `Implementation Plan\n\nPhase 1: Analysis\nPhase 2: Planning\nPhase 3: Execution\nPhase 4: Monitoring`,
-      slide_type: 'content',
-      source_id: file.id,
-      relevance_score: 0.5
-    });
-    
-    slides.push({
-      id: require('uuid').v4(),
-      content: `Next Steps\n\n1. Review current processes\n2. Identify improvement opportunities\n3. Develop action plan\n4. Implement changes`,
-      slide_type: 'conclusion',
-      source_id: file.id,
-      relevance_score: 0.4
-    });
-    
-    console.log(`✅ Extracted ${slides.length} slides directly from file metadata`);
+    console.log(`✅ Extracted ${slides.length} real slides from PowerPoint file`);
     return slides;
     
   } catch (error) {
-    console.error('Error in direct slide extraction:', error);
+    console.error('Error in PowerPoint file extraction:', error);
+    console.log('Falling back to structured content based on file metadata');
+    return createFallbackSlides(file);
+  }
+}
+
+// Extract content from a single slide
+function extractSlideContent(slide: any): { content: string; type: string } {
+  let content = '';
+  let type = 'content';
+  
+  // Extract text from slide shapes
+  if (slide.shapes) {
+    const textElements = [];
     
-    // Fallback to basic content
-    return [{
+    for (const shape of slide.shapes) {
+      if (shape.text && shape.text.trim()) {
+        textElements.push(shape.text.trim());
+      }
+    }
+    
+    content = textElements.join('\n');
+  }
+  
+  // Determine slide type based on content
+  if (content.toLowerCase().includes('welcome') || content.toLowerCase().includes('title')) {
+    type = 'title';
+  } else if (content.toLowerCase().includes('agenda') || content.toLowerCase().includes('overview')) {
+    type = 'title';
+  } else if (content.toLowerCase().includes('conclusion') || content.toLowerCase().includes('next steps')) {
+    type = 'conclusion';
+  } else if (content.toLowerCase().includes('chart') || content.toLowerCase().includes('graph')) {
+    type = 'chart';
+  }
+  
+  return { content, type };
+}
+
+// Calculate relevance score based on content and file metadata
+function calculateRelevanceScore(content: string, industry: string, tags: string[]): number {
+  let score = 0.5; // Base score
+  
+  // Increase score if content matches industry
+  if (industry && content.toLowerCase().includes(industry.toLowerCase())) {
+    score += 0.2;
+  }
+  
+  // Increase score if content matches tags
+  if (tags && tags.length > 0) {
+    const matchingTags = tags.filter(tag => 
+      content.toLowerCase().includes(tag.toLowerCase())
+    );
+    score += (matchingTags.length / tags.length) * 0.3;
+  }
+  
+  // Increase score for longer, more substantial content
+  if (content.length > 100) {
+    score += 0.1;
+  }
+  
+  return Math.min(score, 1.0); // Cap at 1.0
+}
+
+// Create fallback slides when PowerPoint parsing fails
+function createFallbackSlides(file: any): any[] {
+  console.log(`📝 Creating fallback slides for: ${file.title}`);
+  
+  const slides = [];
+  
+  // Create a title slide
+  slides.push({
+    id: require('uuid').v4(),
+    content: `Welcome to ${file.title}\n\nThis presentation covers ${file.industry} industry topics and best practices.`,
+    slide_type: 'title',
+    source_id: file.id,
+    relevance_score: 0.8
+  });
+  
+  // Create content slides based on file metadata
+  if (file.industry) {
+    slides.push({
       id: require('uuid').v4(),
-      content: `Content from ${file.title}\n\nThis presentation contains relevant information for the ${file.industry} industry.`,
+      content: `Industry Overview: ${file.industry}\n\nKey trends and challenges in the ${file.industry} sector.`,
       slide_type: 'content',
       source_id: file.id,
-      relevance_score: 0.5
-    }];
+      relevance_score: 0.7
+    });
   }
+  
+  if (file.tags && file.tags.length > 0) {
+    slides.push({
+      id: require('uuid').v4(),
+      content: `Key Topics:\n${file.tags.map((tag: string, index: number) => `${index + 1}. ${tag}`).join('\n')}`,
+      slide_type: 'content',
+      source_id: file.id,
+      relevance_score: 0.6
+    });
+  }
+  
+  // Add some generic business content
+  slides.push({
+    id: require('uuid').v4(),
+    content: `Business Strategy\n\nStrategic planning and implementation for ${file.industry} organizations.`,
+    slide_type: 'content',
+    source_id: file.id,
+    relevance_score: 0.5
+  });
+  
+  slides.push({
+    id: require('uuid').v4(),
+    content: `Implementation Plan\n\nPhase 1: Analysis\nPhase 2: Planning\nPhase 3: Execution\nPhase 4: Monitoring`,
+    slide_type: 'content',
+    source_id: file.id,
+    relevance_score: 0.5
+  });
+  
+  slides.push({
+    id: require('uuid').v4(),
+    content: `Next Steps\n\n1. Review current processes\n2. Identify improvement opportunities\n3. Develop action plan\n4. Implement changes`,
+    slide_type: 'conclusion',
+    source_id: file.id,
+    relevance_score: 0.4
+  });
+  
+  return slides;
 }
