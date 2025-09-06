@@ -1,6 +1,7 @@
 import os
 import asyncio
 import asyncpg
+import json
 from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
@@ -139,11 +140,14 @@ class DatabaseManager:
             async with self.connection_pool.acquire() as conn:
                 async with conn.transaction():
                     # Update presentation status
+                    preview_urls = presentation_data.get('previewUrls', [])
+                    preview_urls_str = json.dumps(preview_urls) if isinstance(preview_urls, list) else str(preview_urls)
+                    
                     await conn.execute("""
                         UPDATE presentations 
                         SET status = $1, download_url = $2, preview_url = $3, updated_at = CURRENT_TIMESTAMP
                         WHERE id = $4
-                    """, status, presentation_data.get('filepath'), presentation_data.get('previewUrls'), presentation_id)
+                    """, status, presentation_data.get('filepath'), preview_urls_str, presentation_id)
                     
                     # Save slides
                     for i, slide in enumerate(slides):

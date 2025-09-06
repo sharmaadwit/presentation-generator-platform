@@ -45,6 +45,7 @@ async def startup_event():
     """Initialize database connection on startup"""
     try:
         await db_manager.connect()
+        await controlled_source_manager.connect()
         print("✅ Database connected successfully")
     except Exception as e:
         print(f"❌ Database connection failed: {e}")
@@ -55,6 +56,7 @@ async def shutdown_event():
     """Close database connection on shutdown"""
     try:
         await db_manager.close()
+        await controlled_source_manager.close()
         print("✅ Database connection closed")
     except Exception as e:
         print(f"❌ Error closing database: {e}")
@@ -236,18 +238,21 @@ async def find_similar_slides(query_embedding: list, industry: str = None, limit
             se.relevance_score,
             ps.title as source_title,
             ps.industry,
-            ps.tags
+            COALESCE(ps.tags, ARRAY[]::text[]) as tags
         FROM slide_embeddings se
         JOIN presentation_sources ps ON se.source_id = ps.id
-        WHERE ps.status = 'approved'
+        WHERE ps.status IN ('approved', 'trained')
         """
         
         params = []
+        param_count = 1
+        
         if industry:
             query += " AND ps.industry = $1"
             params.append(industry)
+            param_count = 2
         
-        query += " ORDER BY se.relevance_score DESC LIMIT $2"
+        query += f" ORDER BY se.relevance_score DESC LIMIT ${param_count}"
         params.append(limit)
         
         result = await db_manager.query(query, params)
