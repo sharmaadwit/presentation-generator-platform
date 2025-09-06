@@ -85,4 +85,14 @@ router.delete('/files/:fileId',
   asyncHandler(uploadController.deleteFile)
 );
 
+// Download trained document
+router.get('/download/:fileId',
+  asyncHandler(uploadController.downloadTrainedDocument)
+);
+
+// Get trained documents list
+router.get('/trained',
+  asyncHandler(uploadController.getTrainedDocuments)
+);
+
 export { router as uploadRoutes };

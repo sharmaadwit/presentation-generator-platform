@@ -47,6 +47,7 @@
                 <nav class="hidden md:flex space-x-6">
                     <a href="/" class="nav-link hover:text-blue-200 transition-colors" data-tab="home">Home</a>
                     <a href="/generate" class="nav-link hover:text-blue-200 transition-colors" data-tab="generate">Generate & Download</a>
+                    <a href="/trained" class="nav-link hover:text-blue-200 transition-colors" data-tab="trainedDocuments">Trained Documents</a>
                     <a href="/admin" class="nav-link hover:text-blue-200 transition-colors" data-tab="adminDashboard" id="adminNav" style="display: none;">Admin Dashboard</a>
                     <a href="/upload" class="nav-link hover:text-blue-200 transition-colors" data-tab="upload" id="uploadNav" style="display: none;">Upload & Analyze</a>
                     <a href="/dashboard" class="nav-link hover:text-blue-200 transition-colors" data-tab="dashboard" id="dashboardNav" style="display: none;">Analytics</a>
@@ -237,6 +238,67 @@
                             <p>No files uploaded yet</p>
                             <p class="text-sm">Upload some presentations to get started</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trained Documents Tab -->
+        <div id="trainedDocuments" class="tab-content">
+            <div class="max-w-7xl mx-auto">
+                <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">Trained Documents</h2>
+                
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <!-- Search and Filter -->
+                    <div class="mb-6">
+                        <div class="flex flex-col md:flex-row gap-4 mb-4">
+                            <div class="flex-1">
+                                <input type="text" id="searchDocuments" placeholder="Search documents..." 
+                                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            </div>
+                            <div class="flex gap-2">
+                                <select id="industryFilter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                                    <option value="">All Industries</option>
+                                    <option value="Technology">Technology</option>
+                                    <option value="Finance">Finance</option>
+                                    <option value="Healthcare">Healthcare</option>
+                                    <option value="Education">Education</option>
+                                    <option value="Marketing">Marketing</option>
+                                </select>
+                                <button id="refreshDocumentsBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-sync-alt mr-2"></i>Refresh
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Documents List -->
+                    <div id="documentsLoading" class="text-center py-8" style="display: none;">
+                        <i class="fas fa-spinner fa-spin text-2xl text-blue-600 mb-2"></i>
+                        <p>Loading documents...</p>
+                    </div>
+
+                    <div id="documentsList" class="space-y-4">
+                        <!-- Documents will be loaded here -->
+                    </div>
+
+                    <div id="noDocumentsMessage" class="text-center py-8 text-gray-500" style="display: none;">
+                        <i class="fas fa-folder-open text-4xl mb-4"></i>
+                        <p>No trained documents found</p>
+                        <p class="text-sm">Upload and train some presentations to see them here</p>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="documentsPagination" class="mt-6 flex justify-center" style="display: none;">
+                        <nav class="flex space-x-2">
+                            <button id="prevPageBtn" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                Previous
+                            </button>
+                            <span id="pageInfo" class="px-3 py-2 text-sm text-gray-700"></span>
+                            <button id="nextPageBtn" class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                                Next
+                            </button>
+                        </nav>
                     </div>
                 </div>
             </div>

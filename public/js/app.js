@@ -237,6 +237,11 @@ function showTab(tabName) {
     if (tabName === 'dashboard' && isLoggedIn) {
         loadAnalytics();
     }
+    
+    // Load trained documents when trained documents tab is shown
+    if (tabName === 'trainedDocuments' && isLoggedIn) {
+        initializeTrainedDocuments();
+    }
     }
     
     // Update URL based on tab
@@ -261,6 +266,9 @@ function updateURL(tabName) {
             break;
         case 'generate':
             newPath = '/generate';
+            break;
+        case 'trainedDocuments':
+            newPath = '/trained';
             break;
         case 'login':
             newPath = '/login';
@@ -1958,6 +1966,231 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeAnalytics();
 });
 
+// Trained Documents functionality
+let currentPage = 1;
+let currentIndustry = '';
+let currentSearch = '';
+
+// Load trained documents
+async function loadTrainedDocuments(page = 1, industry = '', search = '') {
+    const loadingEl = document.getElementById('documentsLoading');
+    const listEl = document.getElementById('documentsList');
+    const noDocsEl = document.getElementById('noDocumentsMessage');
+    const paginationEl = document.getElementById('documentsPagination');
+
+    try {
+        loadingEl.style.display = 'block';
+        listEl.innerHTML = '';
+        noDocsEl.style.display = 'none';
+        paginationEl.style.display = 'none';
+
+        const params = new URLSearchParams({
+            page: page,
+            limit: 10,
+            status: 'trained'
+        });
+
+        if (industry) params.append('industry', industry);
+        if (search) params.append('search', search);
+
+        const response = await fetch(`/api/upload/trained?${params}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load documents');
+        }
+
+        const data = await response.json();
+        const { documents, pagination } = data;
+
+        if (documents.length === 0) {
+            noDocsEl.style.display = 'block';
+        } else {
+            renderDocumentsList(documents);
+            
+            if (pagination.totalPages > 1) {
+                renderPagination(pagination);
+                paginationEl.style.display = 'flex';
+            }
+        }
+
+    } catch (error) {
+        console.error('Error loading documents:', error);
+        listEl.innerHTML = `
+            <div class="text-center py-8 text-red-500">
+                <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                <p>Error loading documents. Please try again.</p>
+            </div>
+        `;
+    } finally {
+        loadingEl.style.display = 'none';
+    }
+}
+
+// Render documents list
+function renderDocumentsList(documents) {
+    const listEl = document.getElementById('documentsList');
+    
+    listEl.innerHTML = documents.map(doc => `
+        <div class="bg-gray-50 rounded-lg p-6 border border-gray-200 hover:shadow-md transition-shadow">
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-2">${doc.title}</h3>
+                    <p class="text-gray-600 text-sm mb-2">${doc.description || 'No description available'}</p>
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        ${doc.industry ? `<span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">${doc.industry}</span>` : ''}
+                        ${doc.tags && doc.tags.length > 0 ? doc.tags.map(tag => 
+                            `<span class="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">${tag}</span>`
+                        ).join('') : ''}
+                    </div>
+                    <div class="flex items-center text-sm text-gray-500">
+                        <i class="fas fa-brain mr-1"></i>
+                        <span class="mr-4">${doc.embeddingCount} embeddings</span>
+                        <i class="fas fa-user mr-1"></i>
+                        <span class="mr-4">${doc.uploadedBy.name}</span>
+                        <i class="fas fa-calendar mr-1"></i>
+                        <span>${new Date(doc.createdAt).toLocaleDateString()}</span>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2 ml-4">
+                    ${doc.isDownloadable ? `
+                        <button onclick="downloadDocument('${doc.id}', '${doc.title}')" 
+                                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </button>
+                    ` : `
+                        <button disabled class="bg-gray-400 text-white px-4 py-2 rounded-lg cursor-not-allowed text-sm">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>Not Available
+                        </button>
+                    `}
+                    <span class="text-xs text-gray-500 text-center">${doc.status}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Render pagination
+function renderPagination(pagination) {
+    const pageInfoEl = document.getElementById('pageInfo');
+    const prevBtnEl = document.getElementById('prevPageBtn');
+    const nextBtnEl = document.getElementById('nextPageBtn');
+
+    pageInfoEl.textContent = `Page ${pagination.page} of ${pagination.totalPages}`;
+    prevBtnEl.disabled = !pagination.hasPrev;
+    nextBtnEl.disabled = !pagination.hasNext;
+
+    prevBtnEl.onclick = () => {
+        if (pagination.hasPrev) {
+            currentPage = pagination.page - 1;
+            loadTrainedDocuments(currentPage, currentIndustry, currentSearch);
+        }
+    };
+
+    nextBtnEl.onclick = () => {
+        if (pagination.hasNext) {
+            currentPage = pagination.page + 1;
+            loadTrainedDocuments(currentPage, currentIndustry, currentSearch);
+        }
+    };
+}
+
+// Download document
+async function downloadDocument(fileId, fileName) {
+    try {
+        const response = await fetch(`/api/upload/download/${fileId}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Download failed');
+        }
+
+        // Get the filename from Content-Disposition header or use the provided name
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let downloadFileName = fileName;
+        
+        if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+                downloadFileName = filenameMatch[1];
+            }
+        }
+
+        // Create blob and download
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = downloadFileName;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        // Show success message
+        showNotification('Document downloaded successfully!', 'success');
+
+    } catch (error) {
+        console.error('Download error:', error);
+        showNotification('Failed to download document', 'error');
+    }
+}
+
+// Search documents
+function searchDocuments() {
+    const searchInput = document.getElementById('searchDocuments');
+    currentSearch = searchInput.value.trim();
+    currentPage = 1;
+    loadTrainedDocuments(currentPage, currentIndustry, currentSearch);
+}
+
+// Filter by industry
+function filterByIndustry() {
+    const industrySelect = document.getElementById('industryFilter');
+    currentIndustry = industrySelect.value;
+    currentPage = 1;
+    loadTrainedDocuments(currentPage, currentIndustry, currentSearch);
+}
+
+// Initialize trained documents tab
+function initializeTrainedDocuments() {
+    // Load documents when tab is shown
+    loadTrainedDocuments();
+    
+    // Set up event listeners
+    document.getElementById('refreshDocumentsBtn').onclick = () => {
+        currentPage = 1;
+        currentIndustry = '';
+        currentSearch = '';
+        document.getElementById('industryFilter').value = '';
+        document.getElementById('searchDocuments').value = '';
+        loadTrainedDocuments();
+    };
+
+    document.getElementById('searchDocuments').addEventListener('input', debounce(searchDocuments, 500));
+    document.getElementById('industryFilter').addEventListener('change', filterByIndustry);
+}
+
+// Debounce function for search
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 // Export functions for global access
 window.showTab = showTab;
 window.toggleMobileMenu = toggleMobileMenu;
+window.downloadDocument = downloadDocument;

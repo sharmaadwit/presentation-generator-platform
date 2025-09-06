@@ -205,3 +205,32 @@ export const logSourceRejection = async (
     userAgent
   );
 };
+
+export const logFileDownload = async (
+  userId: string,
+  fileId: string,
+  fileName: string,
+  fileSize: number,
+  fileType: string,
+  industry?: string,
+  tags?: string[],
+  ipAddress?: string,
+  userAgent?: string
+): Promise<void> => {
+  await logAnalyticsEvent(
+    userId,
+    'file_downloaded',
+    {
+      fileId,
+      fileName,
+      fileSize,
+      fileType,
+      industry,
+      tags,
+      action: 'download'
+    },
+    undefined,
+    ipAddress,
+    userAgent
+  );
+};

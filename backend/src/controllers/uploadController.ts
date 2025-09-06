@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import path from 'path';
 import fs from 'fs';
-import { logFileUpload, logFileDeletion } from '../utils/analyticsLogger';
+import { logFileUpload, logFileDeletion, logFileDownload } from '../utils/analyticsLogger';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -312,6 +312,181 @@ export const uploadController = {
       }));
 
       res.json({ files });
+
+    } catch (error) {
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Download trained document
+  downloadTrainedDocument: async (req: AuthRequest, res: Response): Promise<void> => {
+    const { fileId } = req.params;
+    const client = await pool.connect();
+
+    try {
+      // Get file details
+      const fileResult = await client.query(
+        `SELECT 
+          ps.id,
+          ps.title,
+          ps.file_path,
+          ps.metadata,
+          ps.industry,
+          ps.tags,
+          ps.status,
+          ps.created_at,
+          u.name as uploaded_by_name
+        FROM presentation_sources ps
+        LEFT JOIN users u ON ps.uploaded_by = u.id
+        WHERE ps.id = $1 AND ps.source_type = $2`,
+        [fileId, 'uploaded']
+      );
+
+      if (fileResult.rows.length === 0) {
+        throw createError('File not found', 404);
+      }
+
+      const file = fileResult.rows[0];
+
+      // Check if file exists on filesystem
+      if (!file.file_path || !fs.existsSync(file.file_path)) {
+        throw createError('File not found on server', 404);
+      }
+
+      // Get file stats
+      const stats = fs.statSync(file.file_path);
+      const fileSize = stats.size;
+
+      // Determine MIME type based on file extension
+      const ext = path.extname(file.file_path).toLowerCase();
+      let mimeType = 'application/octet-stream';
+      
+      switch (ext) {
+        case '.pptx':
+          mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+          break;
+        case '.ppt':
+          mimeType = 'application/vnd.ms-powerpoint';
+          break;
+        case '.pdf':
+          mimeType = 'application/pdf';
+          break;
+      }
+
+      // Set response headers
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader('Content-Length', fileSize);
+      res.setHeader('Content-Disposition', `attachment; filename="${file.title}${ext}"`);
+      res.setHeader('Cache-Control', 'no-cache');
+
+      // Log download event
+      await logFileDownload(
+        req.user!.id,
+        fileId,
+        file.title,
+        fileSize,
+        mimeType,
+        file.industry,
+        file.tags,
+        req.ip,
+        req.get('User-Agent')
+      );
+
+      // Stream file to response
+      const fileStream = fs.createReadStream(file.file_path);
+      fileStream.pipe(res);
+
+      fileStream.on('error', (error) => {
+        console.error('Error streaming file:', error);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Error downloading file' });
+        }
+      });
+
+    } catch (error) {
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Get trained documents list with download info
+  getTrainedDocuments: async (req: AuthRequest, res: Response): Promise<void> => {
+    const client = await pool.connect();
+
+    try {
+      const { status = 'trained', page = 1, limit = 20 } = req.query;
+      const offset = (Number(page) - 1) * Number(limit);
+
+      const result = await client.query(`
+        SELECT 
+          ps.id,
+          ps.title,
+          ps.description,
+          ps.industry,
+          ps.tags,
+          ps.status,
+          ps.file_path,
+          ps.created_at,
+          ps.updated_at,
+          u.name as uploaded_by_name,
+          u.email as uploaded_by_email,
+          COUNT(se.id) as embedding_count,
+          CASE 
+            WHEN ps.file_path IS NOT NULL AND ps.file_path != '' THEN true 
+            ELSE false 
+          END as is_downloadable
+        FROM presentation_sources ps
+        LEFT JOIN users u ON ps.uploaded_by = u.id
+        LEFT JOIN slide_embeddings se ON ps.id = se.source_id
+        WHERE ps.source_type = 'uploaded' 
+        AND ps.status = $1
+        GROUP BY ps.id, ps.title, ps.description, ps.industry, ps.tags, 
+                 ps.status, ps.file_path, ps.created_at, ps.updated_at, 
+                 u.name, u.email
+        ORDER BY ps.created_at DESC
+        LIMIT $2 OFFSET $3
+      `, [status, Number(limit), offset]);
+
+      // Get total count
+      const countResult = await client.query(
+        'SELECT COUNT(*) as total FROM presentation_sources WHERE source_type = $1 AND status = $2',
+        ['uploaded', status]
+      );
+
+      const total = parseInt(countResult.rows[0].total);
+      const totalPages = Math.ceil(total / Number(limit));
+
+      const documents = result.rows.map(doc => ({
+        id: doc.id,
+        title: doc.title,
+        description: doc.description,
+        industry: doc.industry,
+        tags: doc.tags,
+        status: doc.status,
+        isDownloadable: doc.is_downloadable,
+        embeddingCount: parseInt(doc.embedding_count),
+        uploadedBy: {
+          name: doc.uploaded_by_name,
+          email: doc.uploaded_by_email
+        },
+        createdAt: doc.created_at,
+        updatedAt: doc.updated_at
+      }));
+
+      res.json({
+        documents,
+        pagination: {
+          page: Number(page),
+          limit: Number(limit),
+          total,
+          totalPages,
+          hasNext: Number(page) < totalPages,
+          hasPrev: Number(page) > 1
+        }
+      });
 
     } catch (error) {
       throw error;
