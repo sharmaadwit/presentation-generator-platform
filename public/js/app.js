@@ -347,7 +347,24 @@ async function handleGeneratePresentation(event) {
         
     } catch (error) {
         console.error('Error generating presentation:', error);
-        showNotification(`Failed to generate presentation: ${error.message}`, 'error');
+        
+        // Provide specific guidance based on error type
+        let errorMessage = error.message;
+        if (errorMessage.includes('No trained data') || errorMessage.includes('no trained data')) {
+            errorMessage = `No trained data available. Please:
+            1. Upload and approve relevant PowerPoint presentations first
+            2. Train the system using the "Train Now" button
+            3. Provide more specific requirements (industry, use case, target audience)
+            4. Ensure your uploaded files contain relevant content for your topic`;
+        } else if (errorMessage.includes('No relevant content')) {
+            errorMessage = `No relevant content found. Please:
+            1. Upload presentations that match your topic and industry
+            2. Provide more detailed requirements and context
+            3. Try different keywords or industry specifications
+            4. Check that your uploaded files are properly approved and trained`;
+        }
+        
+        showNotification(errorMessage, 'error');
         hideGenerationStatus();
     }
 }
