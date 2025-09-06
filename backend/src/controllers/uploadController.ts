@@ -350,17 +350,29 @@ export const uploadController = {
 
       const file = fileResult.rows[0];
 
+      // Resolve file path - handle both relative and absolute paths
+      let filePath = file.file_path;
+      if (!path.isAbsolute(filePath)) {
+        // If it's a relative path, make it absolute from the project root
+        filePath = path.resolve(process.cwd(), filePath);
+      }
+
+      console.log(`🔍 Looking for file at: ${filePath}`);
+      console.log(`📁 File exists: ${fs.existsSync(filePath)}`);
+
       // Check if file exists on filesystem
-      if (!file.file_path || !fs.existsSync(file.file_path)) {
+      if (!file.file_path || !fs.existsSync(filePath)) {
+        console.error(`❌ File not found at: ${filePath}`);
+        console.error(`❌ Original path: ${file.file_path}`);
         throw createError('File not found on server', 404);
       }
 
       // Get file stats
-      const stats = fs.statSync(file.file_path);
+      const stats = fs.statSync(filePath);
       const fileSize = stats.size;
 
       // Determine MIME type based on file extension
-      const ext = path.extname(file.file_path).toLowerCase();
+      const ext = path.extname(filePath).toLowerCase();
       let mimeType = 'application/octet-stream';
       
       switch (ext) {
@@ -395,7 +407,7 @@ export const uploadController = {
       );
 
       // Stream file to response
-      const fileStream = fs.createReadStream(file.file_path);
+      const fileStream = fs.createReadStream(filePath);
       fileStream.pipe(res);
 
       fileStream.on('error', (error) => {
