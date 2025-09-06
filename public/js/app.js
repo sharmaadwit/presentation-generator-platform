@@ -180,15 +180,20 @@ function setupEventListeners() {
     }
 
     // Logout button
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
+    const logoutNav = document.getElementById('logoutNav');
+    if (logoutNav) {
+        logoutNav.addEventListener('click', handleLogout);
     }
 
     // File management buttons
     const refreshFilesBtn = document.getElementById('refreshFilesBtn');
     if (refreshFilesBtn) {
         refreshFilesBtn.addEventListener('click', loadFiles);
+    }
+    
+    const refreshUploadFilesBtn = document.getElementById('refreshUploadFilesBtn');
+    if (refreshUploadFilesBtn) {
+        refreshUploadFilesBtn.addEventListener('click', loadFiles);
     }
 }
 
@@ -219,8 +224,8 @@ function showTab(tabName) {
         selectedTab.classList.add('active');
         currentTab = tabName;
         
-        // Load files when admin dashboard is shown
-        if (tabName === 'adminDashboard' && isLoggedIn) {
+        // Load files when admin dashboard or upload tab is shown
+        if ((tabName === 'adminDashboard' || tabName === 'upload') && isLoggedIn) {
             loadFiles();
         }
     }
@@ -675,7 +680,6 @@ function updateLoginState() {
     const uploadNav = document.getElementById('uploadNav');
     const dashboardNav = document.getElementById('dashboardNav');
     const logoutNav = document.getElementById('logoutNav');
-    const logoutBtn = document.getElementById('logoutBtn');
     const uploadCard = document.getElementById('uploadCard');
     
     if (isLoggedIn) {
@@ -684,7 +688,6 @@ function updateLoginState() {
         if (uploadNav) uploadNav.style.display = 'block';
         if (dashboardNav) dashboardNav.style.display = 'block';
         if (logoutNav) logoutNav.style.display = 'block';
-        if (logoutBtn) logoutBtn.style.display = 'block';
         
         // Update upload card for logged-in state
         if (uploadCard) {
@@ -700,7 +703,6 @@ function updateLoginState() {
         if (uploadNav) uploadNav.style.display = 'none';
         if (dashboardNav) dashboardNav.style.display = 'none';
         if (logoutNav) logoutNav.style.display = 'none';
-        if (logoutBtn) logoutBtn.style.display = 'none';
         
         // Update upload card for logged-out state
         if (uploadCard) {
@@ -765,9 +767,11 @@ async function handleLogout() {
 
 // File management functions
 async function loadFiles() {
-    const filesLoading = document.getElementById('filesLoading');
-    const filesList = document.getElementById('filesList');
-    const noFilesMessage = document.getElementById('noFilesMessage');
+    // Determine which tab is active and get the appropriate elements
+    const isUploadTab = currentTab === 'upload';
+    const filesLoading = document.getElementById(isUploadTab ? 'uploadFilesLoading' : 'filesLoading');
+    const filesList = document.getElementById(isUploadTab ? 'uploadFilesList' : 'filesList');
+    const noFilesMessage = document.getElementById(isUploadTab ? 'uploadNoFilesMessage' : 'noFilesMessage');
     
     try {
         // Show loading state
