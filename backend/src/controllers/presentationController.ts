@@ -6,10 +6,49 @@ import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+import PptxGenJS from 'pptxgenjs';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 console.log('AI_SERVICE_URL configured as:', AI_SERVICE_URL);
+
+// Helper function to get color scheme based on presentation style
+const getColorScheme = (style: string) => {
+  const schemes = {
+    professional: {
+      primary: '1f4e79',
+      secondary: '7f7f7f',
+      background: 'ffffff',
+      text: '2f2f2f'
+    },
+    creative: {
+      primary: 'e74c3c',
+      secondary: 'f39c12',
+      background: 'f8f9fa',
+      text: '2c3e50'
+    },
+    modern: {
+      primary: '2c3e50',
+      secondary: '3498db',
+      background: 'ffffff',
+      text: '34495e'
+    },
+    corporate: {
+      primary: '1a365d',
+      secondary: '2d3748',
+      background: 'ffffff',
+      text: '2d3748'
+    },
+    minimal: {
+      primary: '000000',
+      secondary: '666666',
+      background: 'ffffff',
+      text: '333333'
+    }
+  };
+  
+  return schemes[style as keyof typeof schemes] || schemes.professional;
+};
 
 export const presentationController = {
   generatePresentation: async (req: AuthRequest, res: Response): Promise<void> => {
@@ -222,56 +261,101 @@ export const presentationController = {
       // Generate filename based on presentation data
       const filename = `${presentation.customer}_${presentation.industry}_presentation.pptx`;
       
-      // Create a simple PowerPoint-like content structure
-      const presentationData = {
-        title: presentation.title,
-        customer: presentation.customer,
-        industry: presentation.industry,
-        useCase: presentation.use_case,
-        style: presentation.style,
-        slides: slides.map(slide => ({
-          title: slide.title,
-          content: slide.content,
-          type: slide.slide_type
-        })),
-        generatedAt: presentation.updated_at
-      };
+      // Create actual PowerPoint presentation using pptxgenjs
+      const pptx = new PptxGenJS();
+      
+      // Set presentation properties
+      pptx.author = 'Presentation Generator Platform';
+      pptx.company = 'AI-Powered Presentation System';
+      pptx.subject = presentation.use_case;
+      pptx.title = presentation.title;
+      
+      // Define color scheme based on style
+      const colorScheme = getColorScheme(presentation.style);
+      
+      // Add slides to presentation
+      slides.forEach((slide, index) => {
+        const slideObj = pptx.addSlide();
+        
+        // Set slide background
+        slideObj.background = { color: colorScheme.background };
+        
+        if (slide.slide_type === 'title') {
+          // Title slide
+          slideObj.addText(slide.title, {
+            x: 1,
+            y: 2,
+            w: 8,
+            h: 1.5,
+            fontSize: 32,
+            bold: true,
+            color: colorScheme.primary,
+            align: 'center'
+          });
+          
+          slideObj.addText(slide.content, {
+            x: 1,
+            y: 3.5,
+            w: 8,
+            h: 2,
+            fontSize: 16,
+            color: colorScheme.text,
+            align: 'center'
+          });
+        } else {
+          // Content slide
+          slideObj.addText(slide.title, {
+            x: 0.5,
+            y: 0.5,
+            w: 9,
+            h: 0.8,
+            fontSize: 24,
+            bold: true,
+            color: colorScheme.primary
+          });
+          
+          // Split content into bullet points
+          const bulletPoints = slide.content.split('\n').filter((line: string) => line.trim());
+          let yPos = 1.5;
+          
+          bulletPoints.forEach((point: string) => {
+            if (point.trim()) {
+              slideObj.addText(`• ${point.trim()}`, {
+                x: 0.8,
+                y: yPos,
+                w: 8.4,
+                h: 0.4,
+                fontSize: 14,
+                color: colorScheme.text,
+                bullet: true
+              });
+              yPos += 0.5;
+            }
+          });
+        }
+        
+        // Add slide number
+        slideObj.addText(`${index + 1}`, {
+          x: 8.5,
+          y: 6.5,
+          w: 1,
+          h: 0.5,
+          fontSize: 12,
+          color: colorScheme.secondary,
+          align: 'right'
+        });
+      });
+      
+      // Generate the PowerPoint file
+      const buffer = await pptx.write({ outputType: 'nodebuffer' }) as Buffer;
       
       // Set headers for PowerPoint file download
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length);
       
-      // Create a structured presentation content that can be opened as a text file
-      // In a real implementation, this would be a proper PowerPoint file
-      const presentationContent = `PRESENTATION: ${presentationData.title}
-CUSTOMER: ${presentationData.customer}
-INDUSTRY: ${presentationData.industry}
-USE CASE: ${presentationData.useCase}
-STYLE: ${presentationData.style}
-GENERATED: ${presentationData.generatedAt}
-
-${'='.repeat(80)}
-
-SLIDES:
-
-${slides.map((slide, index) => `
-SLIDE ${index + 1}: ${slide.title}
-${'-'.repeat(40)}
-${slide.content}
-
-`).join('')}
-
-${'='.repeat(80)}
-
-This presentation was generated using your trained knowledge base.
-The system found relevant content from your uploaded presentations and
-created this structured presentation based on your requirements.
-
-To convert this to a proper PowerPoint file, the system would use
-libraries like python-pptx to create actual .pptx files with
-proper formatting, charts, and visual elements.`;
-
-      res.send(presentationContent);
+      // Send the actual PowerPoint file
+      res.send(buffer);
     } catch (error) {
       throw error;
     } finally {
