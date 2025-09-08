@@ -5,30 +5,43 @@ import path from 'path';
 // Check if Google Drive credentials are configured
 const hasGoogleDriveCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS && process.env.GOOGLE_DRIVE_FOLDER_ID;
 
+console.log('🔧 Google Drive configuration check:');
+console.log('  - GOOGLE_DRIVE_CREDENTIALS exists:', !!process.env.GOOGLE_DRIVE_CREDENTIALS);
+console.log('  - GOOGLE_DRIVE_FOLDER_ID exists:', !!process.env.GOOGLE_DRIVE_FOLDER_ID);
+console.log('  - hasGoogleDriveCredentials:', hasGoogleDriveCredentials);
+
 let drive: any = null;
 
 if (hasGoogleDriveCredentials) {
   try {
+    console.log('🔧 Parsing Google Drive credentials...');
     const credentials = JSON.parse(process.env.GOOGLE_DRIVE_CREDENTIALS!);
+    console.log('🔧 Credentials parsed successfully, project_id:', credentials.project_id);
+    
     const auth = new google.auth.GoogleAuth({
       credentials,
       scopes: ['https://www.googleapis.com/auth/drive.file']
     });
+    console.log('🔧 Google Auth created successfully');
     
     drive = google.drive({ version: 'v3', auth });
     console.log('✅ Google Drive API initialized successfully');
   } catch (error) {
     console.error('❌ Error initializing Google Drive API:', error);
+    console.error('❌ Error details:', error instanceof Error ? error.message : String(error));
   }
+} else {
+  console.warn('⚠️ Google Drive credentials not configured');
 }
 
 export class GoogleDriveService {
   static async uploadFile(filePath: string, fileName: string, folderId?: string): Promise<string> {
-    if (!hasGoogleDriveCredentials) {
-      console.warn('⚠️ Google Drive credentials not configured, falling back to local storage');
+    if (!hasGoogleDriveCredentials || !drive) {
+      console.warn('⚠️ Google Drive credentials not configured or API not initialized, falling back to local storage');
       console.warn('💡 To enable Google Drive storage, configure these environment variables:');
       console.warn('   - GOOGLE_DRIVE_CREDENTIALS (JSON string)');
       console.warn('   - GOOGLE_DRIVE_FOLDER_ID (optional, defaults to root)');
+      console.warn('🔧 Drive client status:', drive ? 'initialized' : 'null');
       
       // Return local path as fallback
       return filePath;
