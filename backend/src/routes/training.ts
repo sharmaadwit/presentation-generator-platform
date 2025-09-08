@@ -28,4 +28,14 @@ router.get('/history',
   asyncHandler(trainingController.getTrainingHistory)
 );
 
+// Clean up mock content
+router.post('/cleanup',
+  asyncHandler(trainingController.cleanupMockContent)
+);
+
+// Complete system cleanup
+router.post('/cleanup-all',
+  asyncHandler(trainingController.completeCleanup)
+);
+
 export { router as trainingRoutes };

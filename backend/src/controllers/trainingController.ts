@@ -13,6 +13,124 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 console.log('AI_SERVICE_URL:', AI_SERVICE_URL);
 
 export const trainingController = {
+  // Clean up mock content from database
+  cleanupMockContent: async (req: AuthRequest, res: Response): Promise<void> => {
+    const client = await pool.connect();
+    
+    try {
+      console.log('🧹 Starting cleanup of mock content...');
+      
+      // Delete mock content from slide_embeddings
+      const embeddingsResult = await client.query(
+        `DELETE FROM slide_embeddings 
+         WHERE content LIKE '%Mock slide content%'`
+      );
+      console.log(`🗑️ Deleted ${embeddingsResult.rowCount} mock embeddings`);
+      
+      // Delete mock content from source_slides
+      const sourceSlidesResult = await client.query(
+        `DELETE FROM source_slides 
+         WHERE content LIKE '%Mock slide content%'`
+      );
+      console.log(`🗑️ Deleted ${sourceSlidesResult.rowCount} mock source slides`);
+      
+      // Reset file statuses to allow re-training
+      const resetResult = await client.query(
+        `UPDATE presentation_sources 
+         SET status = 'approved' 
+         WHERE status = 'trained'`
+      );
+      console.log(`🔄 Reset ${resetResult.rowCount} files to approved status`);
+      
+      res.json({
+        message: 'Mock content cleanup completed',
+        deletedEmbeddings: embeddingsResult.rowCount,
+        deletedSourceSlides: sourceSlidesResult.rowCount,
+        resetFiles: resetResult.rowCount
+      });
+      
+    } catch (error) {
+      console.error('❌ Error cleaning up mock content:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
+  // Complete system cleanup - delete everything
+  completeCleanup: async (req: AuthRequest, res: Response): Promise<void> => {
+    const client = await pool.connect();
+    
+    try {
+      console.log('🧹 Starting complete system cleanup...');
+      
+      // Delete all data in correct order (respecting foreign keys)
+      const results = {
+        slideEmbeddings: 0,
+        sourceSlides: 0,
+        presentationSources: 0,
+        uploadedPresentations: 0,
+        presentations: 0,
+        slides: 0,
+        trainingSessions: 0,
+        trainingProgress: 0
+      };
+      
+      // Delete slide embeddings first
+      const embeddingsResult = await client.query('DELETE FROM slide_embeddings');
+      results.slideEmbeddings = embeddingsResult.rowCount || 0;
+      console.log(`🗑️ Deleted ${results.slideEmbeddings} slide embeddings`);
+      
+      // Delete source slides
+      const sourceSlidesResult = await client.query('DELETE FROM source_slides');
+      results.sourceSlides = sourceSlidesResult.rowCount || 0;
+      console.log(`🗑️ Deleted ${results.sourceSlides} source slides`);
+      
+      // Delete presentation sources
+      const sourcesResult = await client.query('DELETE FROM presentation_sources');
+      results.presentationSources = sourcesResult.rowCount || 0;
+      console.log(`🗑️ Deleted ${results.presentationSources} presentation sources`);
+      
+      // Delete uploaded presentations
+      const uploadsResult = await client.query('DELETE FROM uploaded_presentations');
+      results.uploadedPresentations = uploadsResult.rowCount || 0;
+      console.log(`🗑️ Deleted ${results.uploadedPresentations} uploaded presentations`);
+      
+      // Delete presentations
+      const presentationsResult = await client.query('DELETE FROM presentations');
+      results.presentations = presentationsResult.rowCount || 0;
+      console.log(`🗑️ Deleted ${results.presentations} presentations`);
+      
+      // Delete slides
+      const slidesResult = await client.query('DELETE FROM slides');
+      results.slides = slidesResult.rowCount || 0;
+      console.log(`🗑️ Deleted ${results.slides} slides`);
+      
+      // Delete training sessions
+      const trainingResult = await client.query('DELETE FROM training_sessions');
+      results.trainingSessions = trainingResult.rowCount || 0;
+      console.log(`🗑️ Deleted ${results.trainingSessions} training sessions`);
+      
+      // Delete training progress
+      const progressResult = await client.query('DELETE FROM training_progress');
+      results.trainingProgress = progressResult.rowCount || 0;
+      console.log(`🗑️ Deleted ${results.trainingProgress} training progress records`);
+      
+      console.log('🎉 Complete cleanup finished!');
+      
+      res.json({
+        message: 'Complete system cleanup completed',
+        results
+      });
+      
+    } catch (error) {
+      console.error('❌ Error during complete cleanup:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  },
+
   // Get training status and statistics
   getTrainingStatus: async (req: AuthRequest, res: Response): Promise<void> => {
     const client = await pool.connect();

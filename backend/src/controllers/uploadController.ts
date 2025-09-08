@@ -13,16 +13,42 @@ const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 export const uploadController = {
   uploadPresentation: async (req: AuthRequest, res: Response): Promise<void> => {
     const client = await pool.connect();
+    let uploadId: string | undefined;
     
     try {
+      console.log('🚀 Starting file upload process...');
+      console.log('📋 Request body:', req.body);
+      console.log('📁 Request file:', req.file ? {
+        originalname: req.file.originalname,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        path: req.file.path
+      } : 'No file');
+      
       if (!req.file) {
+        console.error('❌ No file uploaded');
         throw createError('No file uploaded', 400);
       }
 
       const { title, description, industry, tags } = req.body;
-      const uploadId = uuidv4();
+      uploadId = uuidv4();
+      
+      console.log('📝 Upload details:', {
+        uploadId,
+        title: title || req.file.originalname,
+        description,
+        industry,
+        tags,
+        originalFilename: req.file.originalname,
+        storedFilename: req.file.filename,
+        filePath: req.file.path,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype
+      });
 
       // Save upload record to database
+      console.log('💾 Saving upload record to database...');
       const result = await client.query(
         `INSERT INTO uploaded_presentations (
           id, user_id, original_filename, stored_filename, file_path, 
@@ -44,8 +70,11 @@ export const uploadController = {
           'uploaded'
         ]
       );
+      
+      console.log('✅ Upload record saved successfully:', result.rows[0]);
 
       // Log the upload event
+      console.log('📊 Logging upload event...');
       await logFileUpload(
         req.user!.id,
         uploadId,
@@ -59,6 +88,7 @@ export const uploadController = {
         req.get('User-Agent')
       );
 
+      console.log('✅ Upload completed successfully!');
       res.status(201).json({
         uploadId,
         message: 'Presentation uploaded successfully',
@@ -70,8 +100,17 @@ export const uploadController = {
       });
 
     } catch (error) {
+      console.error('❌ Upload failed:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        uploadId: uploadId || 'Not generated',
+        filename: req.file?.originalname || 'No file'
+      });
+      
       // Clean up uploaded file if database operation fails
       if (req.file && fs.existsSync(req.file.path)) {
+        console.log('🧹 Cleaning up uploaded file due to error');
         fs.unlinkSync(req.file.path);
       }
       throw error;

@@ -23,7 +23,21 @@ export const sourceController = {
       for (const file of files) {
         const sourceId = uuidv4();
         
+        console.log(`📝 Processing file: ${file.originalname}`);
+        console.log(`📁 File details:`, {
+          sourceId,
+          originalName: file.originalname,
+          filename: file.filename,
+          path: file.path,
+          size: file.size,
+          mimetype: file.mimetype,
+          title: title || file.originalname,
+          industry: industry || 'General',
+          tags: tags ? tags.split(',').map((t: string) => t.trim()) : []
+        });
+        
         // Save source record to database
+        console.log('💾 Saving source record to database...');
         const result = await client.query(
           `INSERT INTO presentation_sources (
             id, title, description, industry, tags, file_path, 
@@ -43,6 +57,8 @@ export const sourceController = {
             req.user!.id
           ]
         );
+        
+        console.log('✅ Source record saved successfully:', result.rows[0]);
 
         // Log the source upload event
         await logSourceUpload(
@@ -63,12 +79,20 @@ export const sourceController = {
         });
       }
 
+      console.log('✅ All sources uploaded successfully!');
       res.status(201).json({
         message: `${files.length} sources uploaded successfully`,
         sources: uploadResults
       });
 
     } catch (error) {
+      console.error('❌ Source upload failed:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        filesCount: (req.files as Express.Multer.File[])?.length || 0,
+        filenames: (req.files as Express.Multer.File[])?.map((f: Express.Multer.File) => f.originalname) || []
+      });
       throw error;
     } finally {
       client.release();
