@@ -9,10 +9,18 @@ import { sourceController } from '../controllers/sourceController';
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = process.env.UPLOAD_DIR || './uploads';
+    console.log(`🔧 Multer destination (sources) - UPLOAD_DIR: ${process.env.UPLOAD_DIR}`);
+    console.log(`🔧 Multer destination (sources) - uploadDir: ${uploadDir}`);
+    console.log(`🔧 Multer destination (sources) - current working directory: ${process.cwd()}`);
+    
     // Ensure directory exists
     const fs = require('fs');
     if (!fs.existsSync(uploadDir)) {
+      console.log(`⚠️ Upload directory ${uploadDir} does not exist, creating it...`);
       fs.mkdirSync(uploadDir, { recursive: true });
+      console.log(`✅ Created upload directory: ${uploadDir}`);
+    } else {
+      console.log(`✅ Upload directory exists: ${uploadDir}`);
     }
     cb(null, uploadDir);
   },
