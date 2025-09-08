@@ -4,7 +4,7 @@ import { pool } from '../config/database';
 import { createError } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
 import { logSourceUpload, logSourceDeletion } from '../utils/analyticsLogger';
-import { GoogleDriveService } from '../services/googleDriveService';
+import { S3Service } from '../services/s3Service';
 import fs from 'fs';
 
 export const sourceController = {
@@ -39,13 +39,13 @@ export const sourceController = {
         });
         
         // Upload file to Google Drive for persistent storage
-        console.log('☁️ Uploading file to Google Drive...');
-        const driveUrl = await GoogleDriveService.uploadFile(file.path, file.filename);
+        console.log('☁️ Uploading file to S3...');
+        const s3Url = await S3Service.uploadFile(file.path, file.filename);
         
-        // Clean up local file after Google Drive upload
+        // Clean up local file after S3 upload
         if (fs.existsSync(file.path)) {
           fs.unlinkSync(file.path);
-          console.log('🗑️ Local file cleaned up after Google Drive upload');
+          console.log('🗑️ Local file cleaned up after S3 upload');
         }
         
         // Save source record to database with Google Drive URL
@@ -62,7 +62,7 @@ export const sourceController = {
             description || '',
             industry || 'General', // Provide default industry if not specified
             tags ? tags.split(',').map((t: string) => t.trim()) : [],
-            driveUrl, // Store Google Drive URL instead of local path
+            s3Url, // Store S3 URL instead of local path
             'uploaded',
             JSON.stringify({ author, originalName: file.originalname }),
             'pending', // Requires approval

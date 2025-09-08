@@ -113,4 +113,18 @@ export class S3Service {
       throw error;
     }
   }
+
+  static extractFileKeyFromUrl(s3Url: string): string | null {
+    try {
+      // Extract key from s3://bucket-name/path/to/file format
+      const match = s3Url.match(/^s3:\/\/([^\/]+)\/(.+)$/);
+      if (match) {
+        return match[2]; // Return the key part
+      }
+      return null;
+    } catch (error) {
+      console.error('❌ Error extracting file key from S3 URL:', error);
+      return null;
+    }
+  }
 }
