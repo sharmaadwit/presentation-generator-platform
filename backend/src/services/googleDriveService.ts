@@ -54,7 +54,9 @@ export class GoogleDriveService {
       
       const fileMetadata = {
         name: fileName,
-        parents: [parentFolderId]
+        parents: [parentFolderId],
+        // Add support for Shared Drives
+        supportsAllDrives: true
       };
 
       const media = {
@@ -85,7 +87,8 @@ export class GoogleDriveService {
         try {
           const fileMetadata = {
             name: fileName,
-            parents: ['root']
+            parents: ['root'],
+            supportsAllDrives: true
           };
 
           const media = {
@@ -96,7 +99,8 @@ export class GoogleDriveService {
           const response = await drive.files.create({
             requestBody: fileMetadata,
             media: media,
-            fields: 'id,name,webViewLink'
+            fields: 'id,name,webViewLink',
+            supportsAllDrives: true
           });
 
           const fileId = response.data.id;
