@@ -1,19 +1,43 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import fs from 'fs';
+import path from 'path';
 
-// Check if AWS credentials are configured
-const hasAwsCredentials = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.AWS_S3_BUCKET;
+// Load AWS credentials from file
+const credentialsPath = path.join(__dirname, '../config/awsCredentials.json');
+let awsConfig: any = null;
+let s3Client: S3Client | null = null;
+let BUCKET_NAME = 'presentation-generator-files';
 
-const s3Client = hasAwsCredentials ? new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
-  },
-}) : null;
+console.log('🔧 AWS S3 configuration check:');
+console.log('  - Credentials file path:', credentialsPath);
+console.log('  - Credentials file exists:', fs.existsSync(credentialsPath));
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET || 'presentation-generator-files';
+if (fs.existsSync(credentialsPath)) {
+  try {
+    console.log('🔧 Loading AWS credentials from file...');
+    awsConfig = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    console.log('🔧 AWS credentials loaded successfully, region:', awsConfig.region);
+    
+    s3Client = new S3Client({
+      region: awsConfig.region,
+      credentials: {
+        accessKeyId: awsConfig.accessKeyId,
+        secretAccessKey: awsConfig.secretAccessKey,
+      },
+    });
+    
+    BUCKET_NAME = awsConfig.bucketName;
+    console.log('✅ AWS S3 client initialized successfully');
+  } catch (error) {
+    console.error('❌ Error loading AWS credentials:', error);
+    console.error('❌ Error details:', error instanceof Error ? error.message : String(error));
+  }
+} else {
+  console.warn('⚠️ AWS credentials file not found at:', credentialsPath);
+}
+
+const hasAwsCredentials = awsConfig && s3Client;
 
 export class S3Service {
   static async uploadFile(filePath: string, key: string): Promise<string> {
