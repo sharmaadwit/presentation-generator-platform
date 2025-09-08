@@ -2,6 +2,8 @@ import { google } from 'googleapis';
 import fs from 'fs';
 import path from 'path';
 
+console.log('🚀 GoogleDriveService module loading...');
+
 // Check if Google Drive credentials are configured
 const hasGoogleDriveCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS && process.env.GOOGLE_DRIVE_FOLDER_ID;
 
@@ -9,6 +11,9 @@ console.log('🔧 Google Drive configuration check:');
 console.log('  - GOOGLE_DRIVE_CREDENTIALS exists:', !!process.env.GOOGLE_DRIVE_CREDENTIALS);
 console.log('  - GOOGLE_DRIVE_FOLDER_ID exists:', !!process.env.GOOGLE_DRIVE_FOLDER_ID);
 console.log('  - hasGoogleDriveCredentials:', hasGoogleDriveCredentials);
+console.log('  - GOOGLE_DRIVE_CREDENTIALS length:', process.env.GOOGLE_DRIVE_CREDENTIALS?.length || 0);
+console.log('  - GOOGLE_DRIVE_FOLDER_ID value:', process.env.GOOGLE_DRIVE_FOLDER_ID);
+console.log('  - NODE_ENV:', process.env.NODE_ENV);
 
 let drive: any = null;
 
