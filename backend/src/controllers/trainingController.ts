@@ -380,7 +380,7 @@ async function startTrainingProcess(trainingId: string) {
     const totalFiles = files.length;
     
     console.log(`📊 Found ${totalFiles} files to process`);
-    console.log(`📋 Files:`, files.map(f => ({ id: f.id, title: f.title, status: f.status })));
+    console.log(`📋 Files:`, files.map(f => ({ id: f.id, title: f.title, status: f.status, file_path: f.file_path })));
     
     if (totalFiles === 0) {
       // Debug: Check what files exist and their status
@@ -718,6 +718,23 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       
       // Try with different base directories - use same logic as upload routes
       const uploadDir = process.env.UPLOAD_DIR || './uploads';
+      console.log(`🔧 UPLOAD_DIR environment variable: ${process.env.UPLOAD_DIR}`);
+      console.log(`🔧 Resolved uploadDir: ${uploadDir}`);
+      console.log(`🔧 Current working directory: ${process.cwd()}`);
+      
+      // Check if the upload directory exists and create it if needed
+      if (!fs.existsSync(uploadDir)) {
+        console.log(`⚠️ Upload directory ${uploadDir} does not exist, creating it...`);
+        try {
+          fs.mkdirSync(uploadDir, { recursive: true });
+          console.log(`✅ Created upload directory: ${uploadDir}`);
+        } catch (error) {
+          console.error(`❌ Failed to create upload directory ${uploadDir}:`, error);
+        }
+      } else {
+        console.log(`✅ Upload directory exists: ${uploadDir}`);
+      }
+      
       const alternativePaths = [
         path.resolve(uploadDir, fileName), // Use same UPLOAD_DIR as upload routes
         path.resolve('/app', 'uploads', fileName), // /app/uploads/filename (fallback)
