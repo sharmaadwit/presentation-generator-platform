@@ -4,30 +4,22 @@ import path from 'path';
 
 console.log('🚀 GoogleDriveService module loading...');
 
-// Check if Google Drive credentials are configured
-const hasGoogleDriveCredentials = process.env.GOOGLE_DRIVE_CREDENTIALS && process.env.GOOGLE_DRIVE_FOLDER_ID;
+// Load Google Drive credentials from file
+const credentialsPath = path.join(__dirname, '../config/googleDriveCredentials.json');
+const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID || '1aT0JnFTIk4dHQbe5rXbQzYBWMjnSe8bI';
 
 console.log('🔧 Google Drive configuration check:');
-console.log('  - GOOGLE_DRIVE_CREDENTIALS exists:', !!process.env.GOOGLE_DRIVE_CREDENTIALS);
-console.log('  - GOOGLE_DRIVE_FOLDER_ID exists:', !!process.env.GOOGLE_DRIVE_FOLDER_ID);
-console.log('  - hasGoogleDriveCredentials:', hasGoogleDriveCredentials);
-console.log('  - GOOGLE_DRIVE_CREDENTIALS length:', process.env.GOOGLE_DRIVE_CREDENTIALS?.length || 0);
-console.log('  - GOOGLE_DRIVE_FOLDER_ID value:', process.env.GOOGLE_DRIVE_FOLDER_ID);
-console.log('  - NODE_ENV:', process.env.NODE_ENV);
+console.log('  - Credentials file path:', credentialsPath);
+console.log('  - Credentials file exists:', fs.existsSync(credentialsPath));
+console.log('  - GOOGLE_DRIVE_FOLDER_ID:', folderId);
 
 let drive: any = null;
 
-if (hasGoogleDriveCredentials) {
+if (fs.existsSync(credentialsPath)) {
   try {
-    console.log('🔧 Parsing Google Drive credentials...');
-    const credentialsJson = process.env.GOOGLE_DRIVE_CREDENTIALS!;
-    console.log('🔧 JSON length:', credentialsJson.length);
-    console.log('🔧 Characters around position 168:', credentialsJson.substring(160, 180));
-    console.log('🔧 First 200 chars:', credentialsJson.substring(0, 200));
-    console.log('🔧 Last 200 chars:', credentialsJson.substring(credentialsJson.length - 200));
-    
-    const credentials = JSON.parse(credentialsJson);
-    console.log('🔧 Credentials parsed successfully, project_id:', credentials.project_id);
+    console.log('🔧 Loading Google Drive credentials from file...');
+    const credentials = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+    console.log('🔧 Credentials loaded successfully, project_id:', credentials.project_id);
     
     const auth = new google.auth.GoogleAuth({
       credentials,
@@ -42,16 +34,13 @@ if (hasGoogleDriveCredentials) {
     console.error('❌ Error details:', error instanceof Error ? error.message : String(error));
   }
 } else {
-  console.warn('⚠️ Google Drive credentials not configured');
+  console.warn('⚠️ Google Drive credentials file not found at:', credentialsPath);
 }
 
 export class GoogleDriveService {
-  static async uploadFile(filePath: string, fileName: string, folderId?: string): Promise<string> {
-    if (!hasGoogleDriveCredentials || !drive) {
-      console.warn('⚠️ Google Drive credentials not configured or API not initialized, falling back to local storage');
-      console.warn('💡 To enable Google Drive storage, configure these environment variables:');
-      console.warn('   - GOOGLE_DRIVE_CREDENTIALS (JSON string)');
-      console.warn('   - GOOGLE_DRIVE_FOLDER_ID (optional, defaults to root)');
+  static async uploadFile(filePath: string, fileName: string, targetFolderId?: string): Promise<string> {
+    if (!drive) {
+      console.warn('⚠️ Google Drive API not initialized, falling back to local storage');
       console.warn('🔧 Drive client status:', drive ? 'initialized' : 'null');
       
       // Return local path as fallback
@@ -61,7 +50,7 @@ export class GoogleDriveService {
     try {
       const fileMetadata = {
         name: fileName,
-        parents: folderId ? [folderId] : [process.env.GOOGLE_DRIVE_FOLDER_ID || 'root']
+        parents: targetFolderId ? [targetFolderId] : [folderId]
       };
 
       const media = {
@@ -90,8 +79,8 @@ export class GoogleDriveService {
   }
 
   static async downloadFile(fileId: string, localPath: string): Promise<void> {
-    if (!hasGoogleDriveCredentials) {
-      console.warn('⚠️ Google Drive credentials not configured, skipping download');
+    if (!drive) {
+      console.warn('⚠️ Google Drive API not initialized, skipping download');
       return;
     }
 
@@ -120,8 +109,8 @@ export class GoogleDriveService {
   }
 
   static async deleteFile(fileId: string): Promise<void> {
-    if (!hasGoogleDriveCredentials) {
-      console.warn('⚠️ Google Drive credentials not configured, skipping delete');
+    if (!drive) {
+      console.warn('⚠️ Google Drive API not initialized, skipping delete');
       return;
     }
 
