@@ -65,20 +65,14 @@ export const presentationController = {
         additionalRequirements
       } = req.body;
 
-      // Check user's monthly limit
+      // Check if user exists (limit check removed)
       const userResult = await client.query(
-        'SELECT presentations_generated, monthly_limit FROM users WHERE id = $1',
+        'SELECT id FROM users WHERE id = $1',
         [req.user!.id]
       );
 
       if (userResult.rows.length === 0) {
         throw createError('User not found', 404);
-      }
-
-      const { presentations_generated, monthly_limit } = userResult.rows[0];
-      
-      if (presentations_generated >= monthly_limit) {
-        throw createError('Monthly presentation limit reached', 403);
       }
 
       // Create presentation record
@@ -104,11 +98,11 @@ export const presentationController = {
         ]
       );
 
-      // Update user's presentation count
-      await client.query(
-        'UPDATE users SET presentations_generated = presentations_generated + 1 WHERE id = $1',
-        [req.user!.id]
-      );
+      // Presentation count tracking removed (no limits)
+      // await client.query(
+      //   'UPDATE users SET presentations_generated = presentations_generated + 1 WHERE id = $1',
+      //   [req.user!.id]
+      // );
 
       // Start AI generation process (async)
       generatePresentationAsync(presentationId, req.body);

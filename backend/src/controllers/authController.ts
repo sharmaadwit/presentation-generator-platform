@@ -30,10 +30,10 @@ export const authController = {
       // Create user
       const userId = uuidv4();
       const result = await client.query(
-        `INSERT INTO users (id, email, password_hash, name, subscription_tier, monthly_limit)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id, email, name, subscription_tier, presentations_generated, monthly_limit, created_at`,
-        [userId, email, passwordHash, name, 'free', 5]
+        `INSERT INTO users (id, email, password_hash, name)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, email, name, created_at`,
+        [userId, email, passwordHash, name]
       );
 
       const user = result.rows[0];
@@ -50,10 +50,7 @@ export const authController = {
         user: {
           id: user.id,
           email: user.email,
-          name: user.name,
-          subscriptionTier: user.subscription_tier,
-          presentationsGenerated: user.presentations_generated,
-          monthlyLimit: user.monthly_limit
+          name: user.name
         },
         token
       });

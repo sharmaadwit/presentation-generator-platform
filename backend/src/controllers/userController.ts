@@ -9,8 +9,7 @@ export const userController = {
     
     try {
       const result = await client.query(
-        `SELECT id, email, name, subscription_tier, presentations_generated, 
-                monthly_limit, created_at, updated_at
+        `SELECT id, email, name, created_at, updated_at
          FROM users WHERE id = $1`,
         [req.user!.id]
       );
@@ -24,9 +23,6 @@ export const userController = {
         id: user.id,
         email: user.email,
         name: user.name,
-        subscriptionTier: user.subscription_tier,
-        presentationsGenerated: user.presentations_generated,
-        monthlyLimit: user.monthly_limit,
         createdAt: user.created_at,
         updatedAt: user.updated_at
       });
