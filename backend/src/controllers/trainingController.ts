@@ -716,9 +716,11 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       const fileName = path.basename(file.file_path);
       console.log(`📄 Filename: ${fileName}`);
       
-      // Try with different base directories
+      // Try with different base directories - use same logic as upload routes
+      const uploadDir = process.env.UPLOAD_DIR || './uploads';
       const alternativePaths = [
-        path.resolve('/app', 'uploads', fileName), // /app/uploads/filename (primary location)
+        path.resolve(uploadDir, fileName), // Use same UPLOAD_DIR as upload routes
+        path.resolve('/app', 'uploads', fileName), // /app/uploads/filename (fallback)
         path.resolve(process.cwd(), 'uploads', fileName), // Backend/uploads/filename
         path.resolve(process.cwd(), '..', 'uploads', fileName), // Parent/uploads/filename
         path.resolve('/app', 'backend', 'uploads', fileName), // /app/backend/uploads/filename
@@ -735,6 +737,7 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
 
       // If still not found, check what files actually exist in upload directories
       const uploadDirs = [
+        uploadDir, // Use same UPLOAD_DIR as upload routes (primary)
         '/app/uploads',
         '/app/backend/uploads',
         path.resolve(process.cwd(), 'uploads'),
@@ -742,24 +745,24 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       ];
 
       console.log(`🔍 Searching for file: ${fileName}`);
-      for (const uploadDir of uploadDirs) {
-        if (fs.existsSync(uploadDir)) {
-          console.log(`📂 Checking upload directory: ${uploadDir}`);
-          const files = fs.readdirSync(uploadDir);
-          console.log(`📋 Files in ${uploadDir}:`, files.slice(0, 10)); // Show first 10 files
-          console.log(`📊 Total files in ${uploadDir}: ${files.length}`);
+      for (const dir of uploadDirs) {
+        if (fs.existsSync(dir)) {
+          console.log(`📂 Checking upload directory: ${dir}`);
+          const files = fs.readdirSync(dir);
+          console.log(`📋 Files in ${dir}:`, files.slice(0, 10)); // Show first 10 files
+          console.log(`📊 Total files in ${dir}: ${files.length}`);
           
           // Check if our target file is in this directory
           if (files.includes(fileName)) {
-            const foundPath = path.resolve(uploadDir, fileName);
-            console.log(`✅ Found target file in ${uploadDir}: ${foundPath}`);
+            const foundPath = path.resolve(dir, fileName);
+            console.log(`✅ Found target file in ${dir}: ${foundPath}`);
             filePath = foundPath;
             break;
           } else {
-            console.log(`❌ Target file ${fileName} not found in ${uploadDir}`);
+            console.log(`❌ Target file ${fileName} not found in ${dir}`);
           }
         } else {
-          console.log(`❌ Directory does not exist: ${uploadDir}`);
+          console.log(`❌ Directory does not exist: ${dir}`);
         }
       }
     }
