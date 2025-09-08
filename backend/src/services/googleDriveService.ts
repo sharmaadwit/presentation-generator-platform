@@ -20,7 +20,13 @@ let drive: any = null;
 if (hasGoogleDriveCredentials) {
   try {
     console.log('🔧 Parsing Google Drive credentials...');
-    const credentials = JSON.parse(process.env.GOOGLE_DRIVE_CREDENTIALS!);
+    const credentialsJson = process.env.GOOGLE_DRIVE_CREDENTIALS!;
+    console.log('🔧 JSON length:', credentialsJson.length);
+    console.log('🔧 Characters around position 168:', credentialsJson.substring(160, 180));
+    console.log('🔧 First 200 chars:', credentialsJson.substring(0, 200));
+    console.log('🔧 Last 200 chars:', credentialsJson.substring(credentialsJson.length - 200));
+    
+    const credentials = JSON.parse(credentialsJson);
     console.log('🔧 Credentials parsed successfully, project_id:', credentials.project_id);
     
     const auth = new google.auth.GoogleAuth({
