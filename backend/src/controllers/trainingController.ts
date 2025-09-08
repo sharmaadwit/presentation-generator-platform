@@ -492,14 +492,14 @@ async function extractSlidesFromFile(file: any): Promise<any[]> {
     
     // Check if it's a connection error
     if (error instanceof Error && ('code' in error) && (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND')) {
-      console.log('AI service not available, using structured fallback content');
-      return createFallbackSlides(file);
+      console.log('AI service not available, skipping fallback content');
+      return [];
     }
     
-    // For 404 errors, also use structured fallback
+    // For 404 errors, also skip fallback
     if (error instanceof Error && 'response' in error && (error as any).response?.status === 404) {
-      console.log('AI service endpoint not found (404), using structured fallback content');
-      return createFallbackSlides(file);
+      console.log('AI service endpoint not found (404), skipping fallback content');
+      return [];
     }
     
     return [];
@@ -639,7 +639,7 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       console.error(`❌ File not found at: ${filePath}`);
       console.error(`❌ Original path: ${file.file_path}`);
       console.error(`❌ Current working directory: ${process.cwd()}`);
-      return createFallbackSlides(file);
+      return [];
     }
     
     // Parse PowerPoint file
@@ -652,8 +652,8 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     console.log(`📋 First slide preview:`, pptxData.slides?.[0]);
     
     if (!pptxData.slides || pptxData.slides.length === 0) {
-      console.log('No slides found in PowerPoint file, using fallback content');
-      return createFallbackSlides(file);
+      console.log('No slides found in PowerPoint file, skipping content');
+      return [];
     }
     
     const slides = [];
@@ -675,8 +675,8 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     }
     
     if (slides.length === 0) {
-      console.log('No valid content extracted, using fallback slides');
-      return createFallbackSlides(file);
+      console.log('No valid content extracted, skipping slides');
+      return [];
     }
     
     console.log(`✅ Extracted ${slides.length} real slides from PowerPoint file`);
@@ -690,8 +690,8 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       filePath: file.file_path,
       fileName: file.title
     });
-    console.log('🔄 Falling back to structured content based on file metadata');
-    return createFallbackSlides(file);
+    console.log('🔄 Skipping content generation due to error');
+    return [];
   }
 }
 
@@ -752,7 +752,8 @@ function calculateRelevanceScore(content: string, industry: string, tags: string
   return Math.min(score, 1.0); // Cap at 1.0
 }
 
-// Create fallback slides when PowerPoint parsing fails
+// Create fallback slides when PowerPoint parsing fails - COMMENTED OUT
+/*
 function createFallbackSlides(file: any): any[] {
   console.log(`📝 Creating fallback slides for: ${file.title}`);
   
@@ -761,37 +762,88 @@ function createFallbackSlides(file: any): any[] {
   // Create a title slide
   slides.push({
     id: require('uuid').v4(),
-    content: `Welcome to ${file.title}\n\nThis presentation covers ${file.industry} industry topics and best practices.`,
+    content: `${file.title}\n\nComprehensive guide to ${file.industry} industry best practices and success strategies.`,
     slide_type: 'title',
     source_id: file.id,
     relevance_score: 0.8
   });
   
-  // Create content slides based on file metadata
+  // Create content slides based on file metadata and industry
   if (file.industry) {
     slides.push({
       id: require('uuid').v4(),
-      content: `Industry Overview: ${file.industry}\n\nKey trends and challenges in the ${file.industry} sector.`,
+      content: `Industry Overview: ${file.industry}\n\n• Market trends and opportunities\n• Key challenges and solutions\n• Growth potential and future outlook\n• Competitive landscape analysis`,
       slide_type: 'content',
       source_id: file.id,
       relevance_score: 0.7
     });
   }
   
+  // Add industry-specific content based on the file title
+  if (file.title.toLowerCase().includes('whatsapp')) {
+    slides.push({
+      id: require('uuid').v4(),
+      content: `WhatsApp Business Solutions\n\n• Customer engagement strategies\n• Automated messaging flows\n• Business communication best practices\n• Integration with existing systems\n• ROI measurement and analytics`,
+      slide_type: 'content',
+      source_id: file.id,
+      relevance_score: 0.9
+    });
+  }
+  
+  if (file.title.toLowerCase().includes('success') || file.title.toLowerCase().includes('stories')) {
+    slides.push({
+      id: require('uuid').v4(),
+      content: `Success Stories & Case Studies\n\n• Real-world implementation examples\n• Measurable results and outcomes\n• Key success factors\n• Lessons learned and best practices\n• Industry-specific applications`,
+      slide_type: 'content',
+      source_id: file.id,
+      relevance_score: 0.9
+    });
+  }
+  
+  if (file.title.toLowerCase().includes('ai') || file.title.toLowerCase().includes('agents')) {
+    slides.push({
+      id: require('uuid').v4(),
+      content: `AI Agents & Automation\n\n• Intelligent automation strategies\n• AI-powered customer interactions\n• Machine learning applications\n• Implementation roadmap\n• Performance optimization`,
+      slide_type: 'content',
+      source_id: file.id,
+      relevance_score: 0.9
+    });
+  }
+  
+  if (file.title.toLowerCase().includes('banking') || file.title.toLowerCase().includes('bfsi')) {
+    slides.push({
+      id: require('uuid').v4(),
+      content: `Banking & Financial Services\n\n• Digital transformation initiatives\n• Customer experience enhancement\n• Regulatory compliance considerations\n• Technology integration strategies\n• Risk management approaches`,
+      slide_type: 'content',
+      source_id: file.id,
+      relevance_score: 0.9
+    });
+  }
+  
+  if (file.title.toLowerCase().includes('retail') || file.title.toLowerCase().includes('ecommerce')) {
+    slides.push({
+      id: require('uuid').v4(),
+      content: `Retail & E-commerce Solutions\n\n• Omnichannel customer experience\n• Digital commerce strategies\n• Inventory management optimization\n• Customer retention programs\n• Data-driven decision making`,
+      slide_type: 'content',
+      source_id: file.id,
+      relevance_score: 0.9
+    });
+  }
+  
   if (file.tags && file.tags.length > 0) {
     slides.push({
       id: require('uuid').v4(),
-      content: `Key Topics:\n${file.tags.map((tag: string, index: number) => `${index + 1}. ${tag}`).join('\n')}`,
+      content: `Key Focus Areas\n${file.tags.map((tag: string, index: number) => `• ${tag}`).join('\n')}\n\nStrategic implementation and execution`,
       slide_type: 'content',
       source_id: file.id,
       relevance_score: 0.6
     });
   }
   
-  // Add some generic business content
+  // Add implementation and next steps
   slides.push({
     id: require('uuid').v4(),
-    content: `Business Strategy\n\nStrategic planning and implementation for ${file.industry} organizations.`,
+    content: `Implementation Strategy\n\n• Phase 1: Planning and Preparation\n• Phase 2: Pilot Implementation\n• Phase 3: Full Deployment\n• Phase 4: Monitoring and Optimization\n\nSuccess metrics and KPIs`,
     slide_type: 'content',
     source_id: file.id,
     relevance_score: 0.5
@@ -799,15 +851,7 @@ function createFallbackSlides(file: any): any[] {
   
   slides.push({
     id: require('uuid').v4(),
-    content: `Implementation Plan\n\nPhase 1: Analysis\nPhase 2: Planning\nPhase 3: Execution\nPhase 4: Monitoring`,
-    slide_type: 'content',
-    source_id: file.id,
-    relevance_score: 0.5
-  });
-  
-  slides.push({
-    id: require('uuid').v4(),
-    content: `Next Steps\n\n1. Review current processes\n2. Identify improvement opportunities\n3. Develop action plan\n4. Implement changes`,
+    content: `Next Steps & Action Items\n\n• Immediate priorities and quick wins\n• Resource allocation and team structure\n• Timeline and milestone planning\n• Risk mitigation strategies\n• Continuous improvement framework`,
     slide_type: 'conclusion',
     source_id: file.id,
     relevance_score: 0.4
@@ -815,3 +859,4 @@ function createFallbackSlides(file: any): any[] {
   
   return slides;
 }
+*/

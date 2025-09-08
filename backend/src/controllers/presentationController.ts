@@ -462,10 +462,10 @@ const generatePresentationAsync = async (presentationId: string, requestData: an
       return;
     } catch (aiError) {
       const errorMessage = aiError instanceof Error ? aiError.message : 'Unknown error';
-      console.warn('⚠️ AI service not available, attempting to use trained data:', errorMessage);
+      console.warn('⚠️ AI service not available, skipping presentation generation:', errorMessage);
       
-      // Try to use trained data directly
-      await generateFallbackPresentation(presentationId, requestData);
+      // Skip fallback presentation generation
+      // await generateFallbackPresentation(presentationId, requestData);
     }
   } catch (error) {
     console.error('❌ Presentation generation failed:', error);
@@ -570,7 +570,8 @@ const pollForCompletion = async (presentationId: string): Promise<void> => {
   setTimeout(poll, 2000);
 };
 
-// Fallback presentation generation using trained data when AI service is not available
+// Fallback presentation generation using trained data when AI service is not available - COMMENTED OUT
+/*
 const generateFallbackPresentation = async (presentationId: string, requestData: any): Promise<void> => {
   try {
     console.log(`🔄 Generating fallback presentation using trained data for: ${presentationId}`);
@@ -758,7 +759,7 @@ const generateFallbackPresentation = async (presentationId: string, requestData:
     }
   }
 };
-
+*/
 
 // Simple embedding generation function (matches AI service logic)
 const generateSimpleEmbedding = (content: string): number[] => {
