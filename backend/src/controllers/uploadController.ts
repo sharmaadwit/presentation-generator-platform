@@ -7,6 +7,7 @@ import axios from 'axios';
 import path from 'path';
 import fs from 'fs';
 import { logFileUpload, logFileDeletion, logFileDownload } from '../utils/analyticsLogger';
+import { S3Service } from '../services/s3Service';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -47,7 +48,18 @@ export const uploadController = {
         mimeType: req.file.mimetype
       });
 
-      // Save upload record to database
+      // Upload file to S3 for persistent storage
+      console.log('☁️ Uploading file to S3...');
+      const s3Key = `uploads/${uploadId}/${req.file.filename}`;
+      const s3Path = await S3Service.uploadFile(req.file.path, s3Key);
+      
+      // Clean up local file after S3 upload
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+        console.log('🗑️ Local file cleaned up after S3 upload');
+      }
+
+      // Save upload record to database with S3 path
       console.log('💾 Saving upload record to database...');
       const result = await client.query(
         `INSERT INTO uploaded_presentations (
@@ -60,7 +72,7 @@ export const uploadController = {
           req.user!.id,
           req.file.originalname,
           req.file.filename,
-          req.file.path,
+          s3Path, // Store S3 path instead of local path
           req.file.size,
           req.file.mimetype,
           title || req.file.originalname,

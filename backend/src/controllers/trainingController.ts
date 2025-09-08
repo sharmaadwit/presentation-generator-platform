@@ -5,6 +5,7 @@ import { createError } from '../middleware/errorHandler';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
+import { S3Service } from '../services/s3Service';
 const pptx2json = require('pptx2json');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
@@ -689,15 +690,31 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
   try {
     console.log(`📄 Extracting real slides from PowerPoint file: ${file.title}`);
     
-    // Resolve file path - same logic as download function
+    // Resolve file path - handle both S3 and local paths
     let filePath = file.file_path;
     
     console.log(`🔍 Original file path: ${filePath}`);
     console.log(`📁 Current working directory: ${process.cwd()}`);
     console.log(`📁 Is absolute path: ${path.isAbsolute(filePath)}`);
 
-    // If it's an absolute path that starts with /app/uploads, keep it as is
-    if (filePath.startsWith('/app/uploads/')) {
+    // Check if this is an S3 path
+    if (filePath.startsWith('s3://')) {
+      console.log(`☁️ Detected S3 path: ${filePath}`);
+      // Extract S3 key from path
+      const s3Key = filePath.replace('s3://', '').split('/').slice(1).join('/');
+      console.log(`🔑 S3 key: ${s3Key}`);
+      
+      // Download file from S3 to temporary location
+      const tempDir = '/tmp/training';
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      filePath = path.join(tempDir, path.basename(file.file_path));
+      
+      console.log(`📥 Downloading file from S3 to: ${filePath}`);
+      await S3Service.downloadFile(s3Key, filePath);
+    } else if (filePath.startsWith('/app/uploads/')) {
+      // If it's an absolute path that starts with /app/uploads, keep it as is
       console.log(`🔄 Keeping absolute path as is: ${filePath}`);
     } else if (!path.isAbsolute(filePath)) {
       // If it's a relative path, make it absolute from the current working directory
@@ -789,6 +806,8 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       console.error(`❌ File not found at: ${filePath}`);
       console.error(`❌ Original path: ${file.file_path}`);
       console.error(`❌ Current working directory: ${process.cwd()}`);
+      console.error(`⚠️ This is likely due to Railway's stateless containers - files are lost between requests`);
+      console.error(`💡 Solution: Need to implement cloud storage (S3, etc.) for persistent file storage`);
       return [];
     }
     
