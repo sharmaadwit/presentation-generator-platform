@@ -438,12 +438,17 @@ async function startTrainingProcess(trainingId: string) {
         console.log(`✅ Extracted ${slides.length} slides from ${file.title} in ${extractionTime}ms`);
         
         // Generate embeddings for each slide
+        console.log(`🧠 Processing ${slides.length} slides for embeddings...`);
         for (const slide of slides) {
+          console.log(`📝 Processing slide: ${slide.content.substring(0, 100)}...`);
+          
           // Use fallback embedding generation since AI service might not be available
           const embedding = generateSimpleEmbedding(slide.content);
+          console.log(`🔢 Generated embedding with ${embedding.length} dimensions`);
           
           // First, insert the slide into source_slides table
           const slideId = require('uuid').v4();
+          console.log(`💾 Inserting slide into source_slides table...`);
           await client.query(
             `INSERT INTO source_slides (
               id, source_id, slide_index, title, content, 
@@ -459,8 +464,10 @@ async function startTrainingProcess(trainingId: string) {
               JSON.stringify({ training_session_id: trainingId })
             ]
           );
+          console.log(`✅ Slide inserted into source_slides`);
           
           // Then, store the embedding
+          console.log(`💾 Inserting embedding into slide_embeddings table...`);
           await client.query(
             `INSERT INTO slide_embeddings (
               id, source_id, slide_id, content, embedding, 
@@ -477,6 +484,7 @@ async function startTrainingProcess(trainingId: string) {
               trainingId
             ]
           );
+          console.log(`✅ Embedding inserted into slide_embeddings`);
           
           totalEmbeddings++;
         }
@@ -765,12 +773,23 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     console.log(`📁 File exists: ${fs.existsSync(filePath)}`);
     console.log(`📏 File size: ${fs.statSync(filePath).size} bytes`);
     
-    const pptxData = await pptx2json(filePath);
-    console.log(`📊 Parsed PowerPoint file with ${pptxData.slides?.length || 0} slides`);
-    console.log(`📋 First slide preview:`, pptxData.slides?.[0]);
-    
-    if (!pptxData.slides || pptxData.slides.length === 0) {
-      console.log('No slides found in PowerPoint file, skipping content');
+    let pptxData;
+    try {
+      pptxData = await pptx2json(filePath);
+      console.log(`📊 Parsed PowerPoint file with ${pptxData.slides?.length || 0} slides`);
+      console.log(`📋 First slide preview:`, pptxData.slides?.[0]);
+      
+      if (!pptxData.slides || pptxData.slides.length === 0) {
+        console.log('❌ No slides found in PowerPoint file, skipping content');
+        return [];
+      }
+    } catch (parseError) {
+      console.error('❌ Error parsing PowerPoint file:', parseError);
+      console.error('❌ Parse error details:', {
+        message: parseError instanceof Error ? parseError.message : 'Unknown error',
+        stack: parseError instanceof Error ? parseError.stack : undefined,
+        filePath: filePath
+      });
       return [];
     }
     
