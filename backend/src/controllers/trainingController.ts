@@ -741,11 +741,13 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
         path.resolve(process.cwd(), '..', 'uploads'),
       ];
 
+      console.log(`🔍 Searching for file: ${fileName}`);
       for (const uploadDir of uploadDirs) {
         if (fs.existsSync(uploadDir)) {
           console.log(`📂 Checking upload directory: ${uploadDir}`);
           const files = fs.readdirSync(uploadDir);
           console.log(`📋 Files in ${uploadDir}:`, files.slice(0, 10)); // Show first 10 files
+          console.log(`📊 Total files in ${uploadDir}: ${files.length}`);
           
           // Check if our target file is in this directory
           if (files.includes(fileName)) {
@@ -753,7 +755,11 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
             console.log(`✅ Found target file in ${uploadDir}: ${foundPath}`);
             filePath = foundPath;
             break;
+          } else {
+            console.log(`❌ Target file ${fileName} not found in ${uploadDir}`);
           }
+        } else {
+          console.log(`❌ Directory does not exist: ${uploadDir}`);
         }
       }
     }
