@@ -4,7 +4,7 @@ import { pool } from '../config/database';
 import { createError } from '../middleware/errorHandler';
 import { v4 as uuidv4 } from 'uuid';
 import { logSourceUpload, logSourceDeletion } from '../utils/analyticsLogger';
-import { S3Service } from '../services/s3Service';
+import { GoogleDriveService } from '../services/googleDriveService';
 import fs from 'fs';
 
 export const sourceController = {
@@ -38,18 +38,17 @@ export const sourceController = {
           tags: tags ? tags.split(',').map((t: string) => t.trim()) : []
         });
         
-        // Upload file to S3 for persistent storage
-        console.log('☁️ Uploading file to S3...');
-        const s3Key = `sources/${sourceId}/${file.filename}`;
-        const s3Path = await S3Service.uploadFile(file.path, s3Key);
+        // Upload file to Google Drive for persistent storage
+        console.log('☁️ Uploading file to Google Drive...');
+        const driveUrl = await GoogleDriveService.uploadFile(file.path, file.filename);
         
-        // Clean up local file after S3 upload
+        // Clean up local file after Google Drive upload
         if (fs.existsSync(file.path)) {
           fs.unlinkSync(file.path);
-          console.log('🗑️ Local file cleaned up after S3 upload');
+          console.log('🗑️ Local file cleaned up after Google Drive upload');
         }
         
-        // Save source record to database with S3 path
+        // Save source record to database with Google Drive URL
         console.log('💾 Saving source record to database...');
         const result = await client.query(
           `INSERT INTO presentation_sources (
@@ -63,7 +62,7 @@ export const sourceController = {
             description || '',
             industry || 'General', // Provide default industry if not specified
             tags ? tags.split(',').map((t: string) => t.trim()) : [],
-            s3Path, // Store S3 path instead of local path
+            driveUrl, // Store Google Drive URL instead of local path
             'uploaded',
             JSON.stringify({ author, originalName: file.originalname }),
             'pending', // Requires approval

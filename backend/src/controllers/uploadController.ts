@@ -7,7 +7,7 @@ import axios from 'axios';
 import path from 'path';
 import fs from 'fs';
 import { logFileUpload, logFileDeletion, logFileDownload } from '../utils/analyticsLogger';
-import { S3Service } from '../services/s3Service';
+import { GoogleDriveService } from '../services/googleDriveService';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -48,18 +48,17 @@ export const uploadController = {
         mimeType: req.file.mimetype
       });
 
-      // Upload file to S3 for persistent storage
-      console.log('☁️ Uploading file to S3...');
-      const s3Key = `uploads/${uploadId}/${req.file.filename}`;
-      const s3Path = await S3Service.uploadFile(req.file.path, s3Key);
+      // Upload file to Google Drive for persistent storage
+      console.log('☁️ Uploading file to Google Drive...');
+      const driveUrl = await GoogleDriveService.uploadFile(req.file.path, req.file.filename);
       
-      // Clean up local file after S3 upload
+      // Clean up local file after Google Drive upload
       if (fs.existsSync(req.file.path)) {
         fs.unlinkSync(req.file.path);
-        console.log('🗑️ Local file cleaned up after S3 upload');
+        console.log('🗑️ Local file cleaned up after Google Drive upload');
       }
 
-      // Save upload record to database with S3 path
+      // Save upload record to database with Google Drive URL
       console.log('💾 Saving upload record to database...');
       const result = await client.query(
         `INSERT INTO uploaded_presentations (
@@ -72,7 +71,7 @@ export const uploadController = {
           req.user!.id,
           req.file.originalname,
           req.file.filename,
-          s3Path, // Store S3 path instead of local path
+          driveUrl, // Store Google Drive URL instead of local path
           req.file.size,
           req.file.mimetype,
           title || req.file.originalname,

@@ -27,8 +27,7 @@
     "pptx2json": "^0.0.10",
     "pptxgenjs": "^4.0.1",
     "uuid": "^9.0.1",
-    "@aws-sdk/client-s3": "^3.450.0",
-    "@aws-sdk/s3-request-presigner": "^3.450.0"
+    "googleapis": "^128.0.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

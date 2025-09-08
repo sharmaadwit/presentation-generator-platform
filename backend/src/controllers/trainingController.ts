@@ -5,7 +5,7 @@ import { createError } from '../middleware/errorHandler';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
-import { S3Service } from '../services/s3Service';
+import { GoogleDriveService } from '../services/googleDriveService';
 const pptx2json = require('pptx2json');
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
@@ -697,22 +697,26 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     console.log(`📁 Current working directory: ${process.cwd()}`);
     console.log(`📁 Is absolute path: ${path.isAbsolute(filePath)}`);
 
-    // Check if this is an S3 path
-    if (filePath.startsWith('s3://')) {
-      console.log(`☁️ Detected S3 path: ${filePath}`);
-      // Extract S3 key from path
-      const s3Key = filePath.replace('s3://', '').split('/').slice(1).join('/');
-      console.log(`🔑 S3 key: ${s3Key}`);
+    // Check if this is a Google Drive URL
+    if (filePath.includes('drive.google.com')) {
+      console.log(`☁️ Detected Google Drive URL: ${filePath}`);
+      // Extract file ID from Google Drive URL
+      const fileId = GoogleDriveService.extractFileIdFromUrl(filePath);
+      if (!fileId) {
+        console.error('❌ Could not extract file ID from Google Drive URL');
+        return [];
+      }
+      console.log(`🔑 Google Drive file ID: ${fileId}`);
       
-      // Download file from S3 to temporary location
+      // Download file from Google Drive to temporary location
       const tempDir = '/tmp/training';
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
       filePath = path.join(tempDir, path.basename(file.file_path));
       
-      console.log(`📥 Downloading file from S3 to: ${filePath}`);
-      await S3Service.downloadFile(s3Key, filePath);
+      console.log(`📥 Downloading file from Google Drive to: ${filePath}`);
+      await GoogleDriveService.downloadFile(fileId, filePath);
     } else if (filePath.startsWith('/app/uploads/')) {
       // If it's an absolute path that starts with /app/uploads, keep it as is
       console.log(`🔄 Keeping absolute path as is: ${filePath}`);
