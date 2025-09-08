@@ -799,7 +799,8 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     
     let pptxData;
     try {
-      pptxData = await pptx2json(filePath);
+      const parser = new pptx2json();
+      pptxData = await parser.parse(filePath);
       console.log(`📊 Parsed PowerPoint file with ${pptxData.slides?.length || 0} slides`);
       console.log(`📋 First slide preview:`, pptxData.slides?.[0]);
       
