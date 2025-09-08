@@ -28,4 +28,9 @@ router.put('/subscription',
   asyncHandler(userController.updateSubscription)
 );
 
+// Reset presentation limit (for testing/development)
+router.post('/reset-limit',
+  asyncHandler(userController.resetPresentationLimit)
+);
+
 export { router as userRoutes };

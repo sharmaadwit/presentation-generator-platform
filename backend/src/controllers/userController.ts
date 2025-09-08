@@ -211,5 +211,42 @@ export const userController = {
     } finally {
       client.release();
     }
+  },
+
+  resetPresentationLimit: async (req: AuthRequest, res: Response): Promise<void> => {
+    const client = await pool.connect();
+    
+    try {
+      // Reset presentations_generated to 0 for the current user
+      const result = await client.query(
+        `UPDATE users 
+         SET presentations_generated = 0, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1
+         RETURNING id, email, name, subscription_tier, presentations_generated, monthly_limit`,
+        [req.user!.id]
+      );
+
+      if (result.rows.length === 0) {
+        throw createError('User not found', 404);
+      }
+
+      const user = result.rows[0];
+      res.json({
+        message: 'Presentation limit reset successfully',
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          subscriptionTier: user.subscription_tier,
+          presentationsGenerated: user.presentations_generated,
+          monthlyLimit: user.monthly_limit
+        }
+      });
+
+    } catch (error) {
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 };

@@ -308,8 +308,9 @@ async function startTrainingProcess(trainingId: string) {
         console.log(`⏱️ Starting slide extraction for: ${file.title}`);
         const startTime = Date.now();
         
+        // Use direct PowerPoint extraction instead of AI service
         const slides = await Promise.race([
-          extractSlidesFromFile(file),
+          extractSlidesDirectly(file),
           new Promise((_, reject) => 
             setTimeout(() => reject(new Error('Slide extraction timeout after 30 seconds')), 30000)
           )
@@ -320,7 +321,8 @@ async function startTrainingProcess(trainingId: string) {
         
         // Generate embeddings for each slide
         for (const slide of slides) {
-          const embedding = await generateEmbedding(slide.content);
+          // Use fallback embedding generation since AI service might not be available
+          const embedding = generateSimpleEmbedding(slide.content);
           
           // First, insert the slide into source_slides table
           const slideId = require('uuid').v4();
