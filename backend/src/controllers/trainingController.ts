@@ -810,7 +810,7 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       console.error(`❌ File not found at: ${filePath}`);
       console.error(`❌ Original path: ${file.file_path}`);
       console.error(`❌ Current working directory: ${process.cwd()}`);
-      console.error(`⚠️ This is likely due to Railway's stateless containers - files are lost between requests`);
+      console.error(`⚠️ This is likely due to stateless containers - files are lost between requests`);
       console.error(`💡 Solution: Need to implement cloud storage (S3, etc.) for persistent file storage`);
       return [];
     }

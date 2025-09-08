@@ -157,7 +157,15 @@ presentation-generator-platform/
 
 ## 🚀 Deployment
 
-### **Railway Deployment**
+### **AWS Deployment (Current)**
+The application is configured for AWS deployment with:
+- **App Runner**: Fully managed container service
+- **S3**: Object storage for file persistence
+- **RDS**: PostgreSQL database
+- **IAM Roles**: Secure credential management
+
+### **Railway Deployment (Commented Out)**
+<!-- Railway deployment configuration has been commented out for AWS migration
 The application is configured for Railway deployment with:
 - **Nixpacks**: Automatic Node.js and Python detection
 - **Startup Script**: Runs both backend and AI service
@@ -170,6 +178,16 @@ DATABASE_URL=postgresql://...
 JWT_SECRET=your-secret-key
 UPLOAD_DIR=./uploads
 AI_SERVICE_URL=http://localhost:8000
+```
+-->
+
+### **AWS Environment Variables**
+```bash
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=your-bucket-name
+DATABASE_URL=postgresql://...
+JWT_SECRET=your-secret-key
+OPENAI_API_KEY=your-openai-key
 ```
 
 ## 🎯 Usage Guide

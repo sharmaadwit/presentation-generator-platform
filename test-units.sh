@@ -166,12 +166,12 @@ test_configuration() {
         print_error "package.json missing"
     fi
     
-    # Check if railway.json exists
-    if [ -f "railway.json" ]; then
-        print_success "railway.json exists"
-    else
-        print_error "railway.json missing"
-    fi
+    # Check if railway.json exists (commented out for AWS deployment)
+    # if [ -f "railway.json" ]; then
+    #     print_success "railway.json exists"
+    # else
+    #     print_error "railway.json missing"
+    # fi
     
     # Check if backend package.json exists
     if [ -f "backend/package.json" ]; then

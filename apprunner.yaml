@@ -1,0 +1,20 @@
+version: 1.0
+runtime: nodejs18
+build:
+  commands:
+    build:
+      - echo "Installing dependencies..."
+      - cd backend && npm install
+      - echo "Building application..."
+      - cd backend && npm run build
+      - echo "Build completed"
+run:
+  runtime-version: 18
+  command: cd backend && npm start
+  network:
+    port: 8080
+  env:
+    - name: NODE_ENV
+      value: production
+    - name: PORT
+      value: "8080"
