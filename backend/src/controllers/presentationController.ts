@@ -462,10 +462,10 @@ const generatePresentationAsync = async (presentationId: string, requestData: an
       return;
     } catch (aiError) {
       const errorMessage = aiError instanceof Error ? aiError.message : 'Unknown error';
-      console.warn('⚠️ AI service not available, skipping presentation generation:', errorMessage);
+      console.warn('⚠️ AI service not available, using trained data directly:', errorMessage);
       
-      // Skip fallback presentation generation
-      // await generateFallbackPresentation(presentationId, requestData);
+      // Use trained data directly when AI service is not available
+      await generatePresentationFromTrainedData(presentationId, requestData);
     }
   } catch (error) {
     console.error('❌ Presentation generation failed:', error);
@@ -760,6 +760,178 @@ const generateFallbackPresentation = async (presentationId: string, requestData:
   }
 };
 */
+
+// Generate presentation using trained data directly
+const generatePresentationFromTrainedData = async (presentationId: string, requestData: any): Promise<void> => {
+  try {
+    console.log(`🔄 Generating presentation from trained data for: ${presentationId}`);
+    
+    const { useCase, customer, industry, presentationLength, style } = requestData;
+    const client = await pool.connect();
+    
+    try {
+      // Check for trained embeddings first
+      const embeddingsResult = await client.query(
+        `SELECT COUNT(*) as count FROM slide_embeddings se
+         JOIN presentation_sources ps ON se.source_id = ps.id
+         WHERE ps.status IN ('approved', 'trained')`
+      );
+      
+      const hasEmbeddings = parseInt(embeddingsResult.rows[0].count) > 0;
+      console.log(`📊 Found ${embeddingsResult.rows[0].count} trained embeddings`);
+      
+      let slides: any[] = [];
+      
+      if (hasEmbeddings) {
+        // Use trained embeddings for content matching
+        console.log('🎯 Using trained embeddings for content matching...');
+        
+        // Find similar slides using trained embeddings
+        const similarSlidesResult = await client.query(
+          `SELECT 
+            se.id,
+            se.content,
+            se.slide_type,
+            se.relevance_score,
+            ps.title as source_title,
+            ps.industry,
+            COALESCE(ps.tags, ARRAY[]::text[]) as tags
+          FROM slide_embeddings se
+          JOIN presentation_sources ps ON se.source_id = ps.id
+          WHERE ps.status IN ('approved', 'trained')
+          ORDER BY se.relevance_score DESC 
+          LIMIT 20`,
+          []
+        );
+        
+        console.log(`🎯 Found ${similarSlidesResult.rows.length} similar slides from trained data`);
+        
+        // Convert to slide format
+        slides = similarSlidesResult.rows.map((row, index) => {
+          // Extract a better title from the content
+          let slideTitle = `Slide ${index + 1}`;
+          if (row.content) {
+            // Try to extract title from first line or use first 50 characters
+            const firstLine = row.content.split('\n')[0].trim();
+            if (firstLine.length > 0 && firstLine.length < 100) {
+              slideTitle = firstLine;
+            } else {
+              slideTitle = row.content.substring(0, 50).trim() + '...';
+            }
+          }
+          
+          return {
+            title: slideTitle,
+            content: row.content,
+            slideType: row.slide_type || 'content',
+            sourceTitle: row.source_title,
+            industry: row.industry,
+            tags: row.tags || [],
+            relevanceScore: parseFloat(row.relevance_score) || 0
+          };
+        });
+        
+      } else {
+        // Fallback to approved sources without embeddings
+        console.log('📚 Using approved sources without embeddings...');
+        
+        const approvedSourcesResult = await client.query(
+          `SELECT id, title, industry, tags FROM presentation_sources 
+           WHERE status = 'approved' 
+           ORDER BY created_at DESC 
+           LIMIT 10`
+        );
+        
+        console.log(`📚 Found ${approvedSourcesResult.rows.length} approved sources`);
+        
+        // Get slides from approved sources
+        for (const source of approvedSourcesResult.rows) {
+          const sourceSlidesResult = await client.query(
+            `SELECT content, slide_type FROM source_slides 
+             WHERE source_id = $1 
+             ORDER BY order_index 
+             LIMIT 5`,
+            [source.id]
+          );
+          
+          sourceSlidesResult.rows.forEach((slide, index) => {
+            // Extract a better title from the slide content
+            let slideTitle = `${source.title} - Slide ${index + 1}`;
+            if (slide.content) {
+              const firstLine = slide.content.split('\n')[0].trim();
+              if (firstLine.length > 0 && firstLine.length < 100) {
+                slideTitle = firstLine;
+              } else {
+                slideTitle = slide.content.substring(0, 50).trim() + '...';
+              }
+            }
+            
+            slides.push({
+              title: slideTitle,
+              content: slide.content,
+              slideType: slide.slide_type || 'content',
+              sourceTitle: source.title,
+              industry: source.industry,
+              tags: source.tags || []
+            });
+          });
+        }
+      }
+      
+      if (slides.length === 0) {
+        console.log('❌ No trained data found for presentation generation');
+        
+        // Update presentation status to failed
+        await client.query(
+          'UPDATE presentations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+          ['failed', presentationId]
+        );
+        
+        return;
+      }
+      
+      console.log(`✅ Using ${slides.length} slides from trained data`);
+      
+      // Filter and prioritize slides based on relevance
+      slides = slides
+        .filter(slide => slide.content && slide.content.trim().length > 10)
+        .slice(0, presentationLength === 'short' ? 8 : presentationLength === 'medium' ? 12 : 16);
+      
+      // Save slides to database
+      for (let i = 0; i < slides.length; i++) {
+        await client.query(
+          `INSERT INTO slides (id, presentation_id, title, content, slide_type, order_index, extracted_at)
+           VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)`,
+          [uuidv4(), presentationId, slides[i].title, slides[i].content, slides[i].slideType, i + 1]
+        );
+      }
+      
+      // Update presentation status to completed
+      await client.query(
+        'UPDATE presentations SET status = $1, download_url = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+        ['completed', `/api/presentations/${presentationId}/download`, presentationId]
+      );
+      
+      console.log(`✅ Presentation completed with ${slides.length} slides from trained data`);
+      
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('❌ Error generating presentation from trained data:', error);
+    
+    // Update presentation status to failed
+    const client = await pool.connect();
+    try {
+      await client.query(
+        'UPDATE presentations SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        ['failed', presentationId]
+      );
+    } finally {
+      client.release();
+    }
+  }
+};
 
 // Simple embedding generation function (matches AI service logic)
 const generateSimpleEmbedding = (content: string): number[] => {
