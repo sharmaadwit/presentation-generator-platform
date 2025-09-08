@@ -696,11 +696,9 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     console.log(`📁 Current working directory: ${process.cwd()}`);
     console.log(`📁 Is absolute path: ${path.isAbsolute(filePath)}`);
 
-    // If it's an absolute path that starts with /app/uploads, try relative to backend
+    // If it's an absolute path that starts with /app/uploads, keep it as is
     if (filePath.startsWith('/app/uploads/')) {
-      const relativePath = filePath.replace('/app/uploads/', '');
-      filePath = path.resolve(process.cwd(), 'uploads', relativePath);
-      console.log(`🔄 Converted absolute path to relative: ${filePath}`);
+      console.log(`🔄 Keeping absolute path as is: ${filePath}`);
     } else if (!path.isAbsolute(filePath)) {
       // If it's a relative path, make it absolute from the current working directory
       filePath = path.resolve(process.cwd(), filePath);
@@ -720,9 +718,9 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       
       // Try with different base directories
       const alternativePaths = [
+        path.resolve('/app', 'uploads', fileName), // /app/uploads/filename (primary location)
         path.resolve(process.cwd(), 'uploads', fileName), // Backend/uploads/filename
         path.resolve(process.cwd(), '..', 'uploads', fileName), // Parent/uploads/filename
-        path.resolve('/app', 'uploads', fileName), // /app/uploads/filename
         path.resolve('/app', 'backend', 'uploads', fileName), // /app/backend/uploads/filename
       ];
 
