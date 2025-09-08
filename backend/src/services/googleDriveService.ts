@@ -48,9 +48,13 @@ export class GoogleDriveService {
     }
 
     try {
+      // Use target folder ID, then environment variable, then root as fallback
+      const parentFolderId = targetFolderId || folderId || 'root';
+      console.log('🔧 Uploading to Google Drive folder:', parentFolderId);
+      
       const fileMetadata = {
         name: fileName,
-        parents: targetFolderId ? [targetFolderId] : [folderId]
+        parents: [parentFolderId]
       };
 
       const media = {
@@ -72,8 +76,43 @@ export class GoogleDriveService {
       console.log(`🌐 File URL: ${fileUrl}`);
       
       return fileUrl;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ Error uploading file to Google Drive:', error);
+      
+      // If folder not found, try uploading to root folder
+      if (error.status === 404 && error.message?.includes('File not found')) {
+        console.log('🔄 Folder not found, trying to upload to root folder...');
+        try {
+          const fileMetadata = {
+            name: fileName,
+            parents: ['root']
+          };
+
+          const media = {
+            mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            body: fs.createReadStream(filePath)
+          };
+
+          const response = await drive.files.create({
+            requestBody: fileMetadata,
+            media: media,
+            fields: 'id,name,webViewLink'
+          });
+
+          const fileId = response.data.id;
+          const fileUrl = `https://drive.google.com/file/d/${fileId}/view`;
+          
+          console.log('✅ File uploaded to Google Drive root folder successfully');
+          console.log(`🔗 File ID: ${fileId}`);
+          console.log(`🌐 File URL: ${fileUrl}`);
+          
+          return fileUrl;
+        } catch (rootError) {
+          console.error('❌ Error uploading to root folder:', rootError);
+          throw rootError;
+        }
+      }
+      
       throw error;
     }
   }
