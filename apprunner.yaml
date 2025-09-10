@@ -18,3 +18,13 @@ run:
       value: production
     - name: PORT
       value: "8080"
+    - name: AWS_REGION
+      value: "us-east-1"
+    - name: AWS_S3_BUCKET
+      value: "adwit-test"
+    - name: JWT_SECRET
+      value: "cytIEJDvP86Iw1i2O1CsM8k8zHNehHTA0iUtQDse8pk"
+    - name: AI_SERVICE_URL
+      value: "YOUR_AI_SERVICE_URL"
+    - name: FRONTEND_URL
+      value: "YOUR_FRONTEND_URL"
