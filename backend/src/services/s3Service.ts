@@ -5,7 +5,7 @@ import path from 'path';
 
 // AWS S3 Configuration - Multiple credential methods supported
 let s3Client: S3Client | null = null;
-let BUCKET_NAME = 'presentation-generator-files';
+let BUCKET_NAME = process.env.AWS_S3_BUCKET || 'adwit-test';
 let hasAwsCredentials = false;
 
 console.log('🔧 AWS S3 configuration check:');

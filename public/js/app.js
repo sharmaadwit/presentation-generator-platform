@@ -11,8 +11,9 @@ let generatedPresentationId = null;
 let analyticsData = {};
 let charts = {};
 
-// API base URL
-const API_BASE = '/api';
+// API base URL - Updated for production deployment
+const API_BASE = window.location.hostname === 'localhost' ? '/api' : 'http://10.232.105.207:5000/api';
+const AI_SERVICE_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8000' : 'http://10.232.105.207:8000';
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', function() {
