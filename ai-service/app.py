@@ -28,9 +28,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000", 
         "http://localhost:5000",
-        "http://10.232.105.207:3000",
-        "http://10.232.105.207:5000",
-        "http://10.232.105.207:8000"
+        "http://localhost:8000",
+        os.getenv("FRONTEND_URL", ""),
+        os.getenv("BACKEND_URL", "")
     ],
     allow_credentials=True,
     allow_methods=["*"],
