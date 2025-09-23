@@ -8,6 +8,7 @@ import json
 import boto3
 import tempfile
 from urllib.parse import urlparse
+import base64
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -292,13 +293,26 @@ class ControlledSourceManager:
                     # Extract font formatting
                     if para.runs:
                         run = para.runs[0]
+                        # Handle color safely
+                        color_value = None
+                        if run.font.color:
+                            try:
+                                if hasattr(run.font.color, 'rgb'):
+                                    color_value = str(run.font.color.rgb)
+                                elif hasattr(run.font.color, 'theme_color'):
+                                    color_value = f"theme:{run.font.color.theme_color}"
+                                else:
+                                    color_value = str(run.font.color)
+                            except Exception:
+                                color_value = None
+                        
                         formatting['font'] = {
                             'name': run.font.name,
                             'size': run.font.size.pt if run.font.size else None,
                             'bold': run.font.bold,
                             'italic': run.font.italic,
                             'underline': run.font.underline,
-                            'color': str(run.font.color.rgb) if run.font.color and run.font.color.rgb else None
+                            'color': color_value
                         }
         except Exception as e:
             logger.warning(f"Could not extract text formatting: {e}")
@@ -314,6 +328,7 @@ class ControlledSourceManager:
                 if hasattr(shape, 'image'):
                     try:
                         # Get image data
+                        image_blob = shape.image.blob if hasattr(shape.image, 'blob') else None
                         image_data = {
                             'index': i,
                             'left': shape.left,
@@ -321,7 +336,7 @@ class ControlledSourceManager:
                             'width': shape.width,
                             'height': shape.height,
                             'image_format': shape.image.content_type if hasattr(shape.image, 'content_type') else 'unknown',
-                            'image_data': shape.image.blob if hasattr(shape.image, 'blob') else None
+                            'image_data': base64.b64encode(image_blob).decode('utf-8') if image_blob else None
                         }
                         
                         # Try to extract image filename or identifier
@@ -354,8 +369,8 @@ class ControlledSourceManager:
             
             # Extract slide dimensions
             layout_info['dimensions'] = {
-                'width': slide.slide_width,
-                'height': slide.slide_height
+                'width': slide.slide_layout.slide_width if hasattr(slide.slide_layout, 'slide_width') else None,
+                'height': slide.slide_layout.slide_height if hasattr(slide.slide_layout, 'slide_height') else None
             }
             
             # Extract slide layout information
