@@ -398,7 +398,12 @@ class PresentationGenerator:
         if formatting_data and isinstance(formatting_data, dict):
             title_formatting = formatting_data.get('title', {})
             if title_formatting and isinstance(title_formatting, dict):
+                logger.info(f"🎨 Applying title formatting: {title_formatting}")
                 self._apply_text_formatting(title, title_formatting)
+            else:
+                logger.info(f"🎨 No title formatting found for slide {slide_number}")
+        else:
+            logger.info(f"🎨 No formatting data found for slide {slide_number}")
         
         content = slide.placeholders[1]
         content.text = slide_data.get('content', '')
@@ -410,12 +415,16 @@ class PresentationGenerator:
         # Copy images from extracted data
         images = slide_data.get('images', [])
         if images and isinstance(images, list):
+            logger.info(f"🖼️ Found {len(images)} images for slide {slide_number}")
             for image_data in images:
                 try:
                     if image_data and isinstance(image_data, dict):
+                        logger.info(f"🖼️ Adding image to slide {slide_number}")
                         self._add_extracted_image(slide, image_data)
                 except Exception as e:
                     logger.warning(f"Could not add extracted image to slide {slide_number}: {e}")
+        else:
+            logger.info(f"🖼️ No images found for slide {slide_number}")
         
         # Copy exact image if available (legacy support)
         if slide_data.get('imageUrl'):
