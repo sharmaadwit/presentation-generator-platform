@@ -32,10 +32,15 @@ app.use(cors({
     'http://localhost:3000', 
     'http://localhost:5000',
     'http://localhost:8000',
+    'http://10.232.105.207:3000',
+    'http://10.232.105.207:5000',
+    'http://10.232.105.207:8000',
     process.env.FRONTEND_URL,
     process.env.AI_SERVICE_URL
   ].filter((url): url is string => Boolean(url)),
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Rate limiting
