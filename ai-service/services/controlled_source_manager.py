@@ -5,6 +5,9 @@ from typing import List, Dict, Any, Optional
 import logging
 from pptx import Presentation
 import json
+import boto3
+import tempfile
+from urllib.parse import urlparse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,6 +16,20 @@ class ControlledSourceManager:
     def __init__(self):
         self.database_url = os.getenv('DATABASE_URL', 'postgresql://localhost:5432/presentation_generator')
         self.connection_pool = None
+        self.s3_client = None
+        self._init_s3_client()
+    
+    def _init_s3_client(self):
+        """Initialize S3 client with AWS credentials"""
+        try:
+            self.s3_client = boto3.client(
+                's3',
+                region_name=os.getenv('AWS_REGION', 'ap-south-1')
+            )
+            logger.info("S3 client initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize S3 client: {e}")
+            self.s3_client = None
     
     async def connect(self):
         """Connect to the database"""
@@ -132,9 +149,20 @@ class ControlledSourceManager:
     
     async def extract_slides_from_source(self, source_id: str, file_path: str) -> List[Dict[str, Any]]:
         """Extract slides from a presentation file and store them in the database"""
+        temp_file = None
         try:
+            # Handle S3 files
+            if file_path.startswith('s3://'):
+                temp_file = await self._download_s3_file(file_path)
+                if not temp_file:
+                    logger.error(f"Failed to download S3 file: {file_path}")
+                    return []
+                presentation_path = temp_file
+            else:
+                presentation_path = file_path
+            
             # Load the presentation
-            prs = Presentation(file_path)
+            prs = Presentation(presentation_path)
             slides = []
             
             for i, slide in enumerate(prs.slides):
@@ -151,6 +179,40 @@ class ControlledSourceManager:
         except Exception as e:
             logger.error(f"Error extracting slides from source {source_id}: {e}")
             return []
+        finally:
+            # Clean up temporary file
+            if temp_file and os.path.exists(temp_file):
+                try:
+                    os.unlink(temp_file)
+                except Exception as e:
+                    logger.warning(f"Failed to clean up temp file {temp_file}: {e}")
+    
+    async def _download_s3_file(self, s3_path: str) -> Optional[str]:
+        """Download file from S3 to temporary location"""
+        if not self.s3_client:
+            logger.error("S3 client not initialized")
+            return None
+        
+        try:
+            # Parse S3 URL
+            parsed = urlparse(s3_path)
+            bucket = parsed.netloc
+            key = parsed.path.lstrip('/')
+            
+            # Create temporary file
+            temp_fd, temp_path = tempfile.mkstemp(suffix='.pptx')
+            os.close(temp_fd)
+            
+            # Download file from S3
+            logger.info(f"Downloading S3 file: s3://{bucket}/{key}")
+            self.s3_client.download_file(bucket, key, temp_path)
+            
+            logger.info(f"Successfully downloaded S3 file to: {temp_path}")
+            return temp_path
+            
+        except Exception as e:
+            logger.error(f"Error downloading S3 file {s3_path}: {e}")
+            return None
     
     def _extract_slide_data(self, slide, index: int) -> Dict[str, Any]:
         """Extract data from a single slide with enhanced visual element preservation"""
