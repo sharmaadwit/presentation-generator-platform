@@ -383,25 +383,42 @@ class PresentationGenerator:
             return []
     
     def _copy_exact_slide(self, prs: Presentation, slide_data: Dict[str, Any], slide_number: int):
-        """Copy exact slide from source (no AI cost)"""
+        """Copy exact slide from source with enhanced visual element preservation"""
         
         # Use content slide layout
         slide_layout = prs.slide_layouts[1]  # Content layout
         slide = prs.slides.add_slide(slide_layout)
         
-        # Copy exact title and content
+        # Copy exact title and content with formatting
         title = slide.shapes.title
         title.text = slide_data.get('title', f'Slide {slide_number}')
+        
+        # Apply title formatting if available
+        self._apply_text_formatting(title, slide_data.get('formatting', {}).get('title', {}))
         
         content = slide.placeholders[1]
         content.text = slide_data.get('content', '')
         
-        # Copy exact image if available
+        # Apply content formatting if available
+        self._apply_content_formatting(content, slide_data.get('formatting', {}))
+        
+        # Copy images from extracted data
+        images = slide_data.get('images', [])
+        for image_data in images:
+            try:
+                self._add_extracted_image(slide, image_data)
+            except Exception as e:
+                logger.warning(f"Could not add extracted image to slide {slide_number}: {e}")
+        
+        # Copy exact image if available (legacy support)
         if slide_data.get('imageUrl'):
             try:
                 self._add_slide_image(slide, slide_data['imageUrl'])
             except Exception as e:
                 logger.warning(f"Could not add image to slide {slide_number}: {e}")
+        
+        # Apply layout information if available
+        self._apply_layout_info(slide, slide_data.get('layout_info', {}))
         
         # Add slide number
         self._add_slide_number(slide, slide_number)
@@ -507,6 +524,142 @@ class PresentationGenerator:
             paragraph.font.size = Pt(8)
             paragraph.font.color.rgb = RGBColor(128, 128, 128)
     
+    def _apply_text_formatting(self, shape, formatting: Dict[str, Any]):
+        """Apply text formatting to a shape"""
+        try:
+            if not formatting or not hasattr(shape, 'text_frame'):
+                return
+                
+            text_frame = shape.text_frame
+            if not text_frame.paragraphs:
+                return
+                
+            para = text_frame.paragraphs[0]
+            
+            # Apply paragraph formatting
+            if 'paragraph' in formatting:
+                para_format = formatting['paragraph']
+                if para_format.get('alignment'):
+                    # Convert string alignment to enum
+                    alignment_map = {
+                        'PP_ALIGN.LEFT': PP_ALIGN.LEFT,
+                        'PP_ALIGN.CENTER': PP_ALIGN.CENTER,
+                        'PP_ALIGN.RIGHT': PP_ALIGN.RIGHT,
+                        'PP_ALIGN.JUSTIFY': PP_ALIGN.JUSTIFY
+                    }
+                    if para_format['alignment'] in alignment_map:
+                        para.alignment = alignment_map[para_format['alignment']]
+            
+            # Apply font formatting
+            if 'font' in formatting and para.runs:
+                font_format = formatting['font']
+                run = para.runs[0]
+                
+                if font_format.get('name'):
+                    run.font.name = font_format['name']
+                if font_format.get('size'):
+                    run.font.size = Pt(font_format['size'])
+                if font_format.get('bold') is not None:
+                    run.font.bold = font_format['bold']
+                if font_format.get('italic') is not None:
+                    run.font.italic = font_format['italic']
+                if font_format.get('underline') is not None:
+                    run.font.underline = font_format['underline']
+                if font_format.get('color'):
+                    # Parse color string and apply
+                    try:
+                        color_str = font_format['color']
+                        if color_str.startswith('RGBColor('):
+                            # Extract RGB values
+                            rgb_values = color_str[9:-1].split(', ')
+                            if len(rgb_values) == 3:
+                                r, g, b = map(int, rgb_values)
+                                run.font.color.rgb = RGBColor(r, g, b)
+                    except Exception as e:
+                        logger.warning(f"Could not apply color formatting: {e}")
+                        
+        except Exception as e:
+            logger.warning(f"Could not apply text formatting: {e}")
+    
+    def _apply_content_formatting(self, placeholder, formatting: Dict[str, Any]):
+        """Apply formatting to content placeholder"""
+        try:
+            if not formatting or not hasattr(placeholder, 'text_frame'):
+                return
+                
+            text_frame = placeholder.text_frame
+            
+            # Apply formatting to each paragraph
+            for i, para in enumerate(text_frame.paragraphs):
+                format_key = f'text_shape_{i+1}'
+                if format_key in formatting:
+                    self._apply_text_formatting(placeholder, {format_key: formatting[format_key]})
+                    
+        except Exception as e:
+            logger.warning(f"Could not apply content formatting: {e}")
+    
+    def _add_extracted_image(self, slide, image_data: Dict[str, Any]):
+        """Add image from extracted data to slide"""
+        try:
+            if not image_data.get('image_data'):
+                logger.warning("No image data available")
+                return
+                
+            # Save image data to temporary file
+            import tempfile
+            import uuid
+            
+            # Determine file extension from format
+            image_format = image_data.get('image_format', 'png')
+            if 'jpeg' in image_format.lower():
+                ext = '.jpg'
+            elif 'png' in image_format.lower():
+                ext = '.png'
+            elif 'gif' in image_format.lower():
+                ext = '.gif'
+            else:
+                ext = '.png'  # Default
+                
+            temp_path = f"/tmp/extracted_image_{uuid.uuid4()}{ext}"
+            
+            # Write image data to file
+            with open(temp_path, 'wb') as f:
+                f.write(image_data['image_data'])
+            
+            # Add image to slide with original positioning
+            left = image_data.get('left', Inches(1))
+            top = image_data.get('top', Inches(2))
+            width = image_data.get('width', Inches(4))
+            height = image_data.get('height', Inches(3))
+            
+            slide.shapes.add_picture(temp_path, left, top, width, height)
+            
+            # Clean up temp file
+            os.remove(temp_path)
+            
+        except Exception as e:
+            logger.error(f"Error adding extracted image: {e}")
+    
+    def _apply_layout_info(self, slide, layout_info: Dict[str, Any]):
+        """Apply layout information to slide"""
+        try:
+            if not layout_info:
+                return
+                
+            # Apply background if available
+            if 'background' in layout_info and layout_info['background'].get('has_fill'):
+                # This would require more complex background handling
+                # For now, we'll skip background application
+                pass
+                
+            # Apply dimensions if available
+            if 'dimensions' in layout_info:
+                # Slide dimensions are set at presentation level, not individual slides
+                pass
+                
+        except Exception as e:
+            logger.warning(f"Could not apply layout info: {e}")
+
     def get_presentation_info(self, filepath: str) -> Dict[str, Any]:
         """Get information about the generated presentation"""
         

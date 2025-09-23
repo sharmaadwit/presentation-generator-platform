@@ -153,43 +153,160 @@ class ControlledSourceManager:
             return []
     
     def _extract_slide_data(self, slide, index: int) -> Dict[str, Any]:
-        """Extract data from a single slide"""
+        """Extract data from a single slide with enhanced visual element preservation"""
         slide_data = {
             'slide_index': index,
             'title': '',
             'content': '',
             'image_url': None,
+            'images': [],  # Store multiple images
             'slide_type': 'content',
-            'metadata': {}
+            'metadata': {},
+            'formatting': {},  # Store formatting information
+            'layout_info': {}  # Store layout information
         }
         
         try:
             # Extract title
             if slide.shapes.title:
                 slide_data['title'] = slide.shapes.title.text
+                # Extract title formatting
+                slide_data['formatting']['title'] = self._extract_text_formatting(slide.shapes.title)
             
-            # Extract content from text boxes
+            # Extract content from text boxes with formatting
             content_parts = []
             for shape in slide.shapes:
                 if hasattr(shape, 'text') and shape.text:
                     if shape != slide.shapes.title:  # Don't duplicate title
                         content_parts.append(shape.text)
+                        # Extract formatting for each text shape
+                        shape_formatting = self._extract_text_formatting(shape)
+                        if shape_formatting:
+                            slide_data['formatting'][f'text_shape_{len(content_parts)}'] = shape_formatting
             
             slide_data['content'] = '\n'.join(content_parts)
+            
+            # Extract images and visual elements
+            slide_data['images'] = self._extract_images(slide)
+            
+            # Extract slide background and layout information
+            slide_data['layout_info'] = self._extract_layout_info(slide)
             
             # Determine slide type
             slide_data['slide_type'] = self._classify_slide_type(slide_data)
             
-            # Extract images (simplified - would need more complex logic for actual images)
+            # Enhanced metadata
             slide_data['metadata'] = {
                 'shapes_count': len(slide.shapes),
-                'has_images': any(hasattr(shape, 'image') for shape in slide.shapes)
+                'has_images': len(slide_data['images']) > 0,
+                'image_count': len(slide_data['images']),
+                'text_shapes': len([s for s in slide.shapes if hasattr(s, 'text')]),
+                'has_background': hasattr(slide.background, 'fill'),
+                'slide_layout': getattr(slide.slide_layout, 'name', 'unknown') if hasattr(slide, 'slide_layout') else 'unknown'
             }
             
         except Exception as e:
             logger.error(f"Error extracting slide data: {e}")
         
         return slide_data
+    
+    def _extract_text_formatting(self, shape) -> Dict[str, Any]:
+        """Extract text formatting information from a shape"""
+        formatting = {}
+        
+        try:
+            if hasattr(shape, 'text_frame') and shape.text_frame:
+                text_frame = shape.text_frame
+                
+                # Extract paragraph formatting
+                if text_frame.paragraphs:
+                    para = text_frame.paragraphs[0]
+                    formatting['paragraph'] = {
+                        'alignment': str(para.alignment) if para.alignment else None,
+                        'space_before': para.space_before,
+                        'space_after': para.space_after
+                    }
+                    
+                    # Extract font formatting
+                    if para.runs:
+                        run = para.runs[0]
+                        formatting['font'] = {
+                            'name': run.font.name,
+                            'size': run.font.size.pt if run.font.size else None,
+                            'bold': run.font.bold,
+                            'italic': run.font.italic,
+                            'underline': run.font.underline,
+                            'color': str(run.font.color.rgb) if run.font.color and run.font.color.rgb else None
+                        }
+        except Exception as e:
+            logger.warning(f"Could not extract text formatting: {e}")
+        
+        return formatting
+    
+    def _extract_images(self, slide) -> List[Dict[str, Any]]:
+        """Extract images from slide"""
+        images = []
+        
+        try:
+            for i, shape in enumerate(slide.shapes):
+                if hasattr(shape, 'image'):
+                    try:
+                        # Get image data
+                        image_data = {
+                            'index': i,
+                            'left': shape.left,
+                            'top': shape.top,
+                            'width': shape.width,
+                            'height': shape.height,
+                            'image_format': shape.image.content_type if hasattr(shape.image, 'content_type') else 'unknown',
+                            'image_data': shape.image.blob if hasattr(shape.image, 'blob') else None
+                        }
+                        
+                        # Try to extract image filename or identifier
+                        if hasattr(shape.image, 'filename'):
+                            image_data['filename'] = shape.image.filename
+                        
+                        images.append(image_data)
+                        
+                    except Exception as e:
+                        logger.warning(f"Could not extract image {i}: {e}")
+                        continue
+                        
+        except Exception as e:
+            logger.warning(f"Could not extract images from slide: {e}")
+        
+        return images
+    
+    def _extract_layout_info(self, slide) -> Dict[str, Any]:
+        """Extract layout and background information"""
+        layout_info = {}
+        
+        try:
+            # Extract background information
+            if hasattr(slide, 'background') and slide.background:
+                background = slide.background
+                layout_info['background'] = {
+                    'has_fill': hasattr(background, 'fill'),
+                    'fill_type': str(background.fill.type) if hasattr(background, 'fill') else None
+                }
+            
+            # Extract slide dimensions
+            layout_info['dimensions'] = {
+                'width': slide.slide_width,
+                'height': slide.slide_height
+            }
+            
+            # Extract slide layout information
+            if hasattr(slide, 'slide_layout'):
+                layout_info['layout'] = {
+                    'name': getattr(slide.slide_layout, 'name', 'unknown'),
+                    'layout_id': getattr(slide.slide_layout, 'layout_id', None)
+                }
+                
+        except Exception as e:
+            logger.warning(f"Could not extract layout info: {e}")
+        
+        return layout_info
     
     def _classify_slide_type(self, slide_data: Dict[str, Any]) -> str:
         """Classify the type of slide based on content"""
@@ -208,15 +325,16 @@ class ControlledSourceManager:
             return 'content'
     
     async def _store_slides(self, slides: List[Dict[str, Any]]):
-        """Store extracted slides in the database"""
+        """Store extracted slides in the database with enhanced visual data"""
         try:
             async with self.connection_pool.acquire() as conn:
                 for slide in slides:
                     await conn.execute("""
                         INSERT INTO source_slides (
                             source_id, slide_index, title, content, 
-                            image_url, slide_type, metadata
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+                            image_url, slide_type, metadata, 
+                            images, formatting, layout_info
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
                     """, 
                     slide['source_id'],
                     slide['slide_index'],
@@ -224,7 +342,10 @@ class ControlledSourceManager:
                     slide['content'],
                     slide['image_url'],
                     slide['slide_type'],
-                    json.dumps(slide['metadata'])
+                    json.dumps(slide['metadata']),
+                    json.dumps(slide.get('images', [])),
+                    json.dumps(slide.get('formatting', {})),
+                    json.dumps(slide.get('layout_info', {}))
                     )
         except Exception as e:
             logger.error(f"Error storing slides: {e}")

@@ -244,9 +244,13 @@ async def find_similar_slides(query_embedding: list, industry: str = None, limit
             se.relevance_score,
             ps.title as source_title,
             ps.industry,
-            COALESCE(ps.tags, ARRAY[]::text[]) as tags
+            COALESCE(ps.tags, ARRAY[]::text[]) as tags,
+            ss.images,
+            ss.formatting,
+            ss.layout_info
         FROM slide_embeddings se
         JOIN presentation_sources ps ON se.source_id = ps.id
+        LEFT JOIN source_slides ss ON se.slide_id = ss.id
         WHERE ps.status IN ('approved', 'trained')
         """
         
@@ -274,7 +278,10 @@ async def find_similar_slides(query_embedding: list, industry: str = None, limit
                 'source_title': row['source_title'],
                 'industry': row['industry'],
                 'tags': row['tags'] or [],
-                'action': 'copy_exact'  # Use pre-trained content as-is
+                'action': 'copy_exact',  # Use pre-trained content as-is
+                'images': row.get('images', []),
+                'formatting': row.get('formatting', {}),
+                'layout_info': row.get('layout_info', {})
             })
         
         return slides

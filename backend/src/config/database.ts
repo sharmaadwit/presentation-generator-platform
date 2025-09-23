@@ -163,7 +163,10 @@ const initializeTables = async (): Promise<void> => {
         image_url VARCHAR(500),
         slide_type VARCHAR(50) NOT NULL,
         extracted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        metadata JSONB
+        metadata JSONB,
+        images JSONB,
+        formatting JSONB,
+        layout_info JSONB
       )
     `);
 
@@ -171,6 +174,14 @@ const initializeTables = async (): Promise<void> => {
     await client.query(`
       ALTER TABLE users 
       ADD COLUMN IF NOT EXISTS user_type VARCHAR(50) DEFAULT 'user'
+    `);
+
+    // Add enhanced visual data columns to source_slides table
+    await client.query(`
+      ALTER TABLE source_slides 
+      ADD COLUMN IF NOT EXISTS images JSONB,
+      ADD COLUMN IF NOT EXISTS formatting JSONB,
+      ADD COLUMN IF NOT EXISTS layout_info JSONB
     `);
 
     // Training system tables
