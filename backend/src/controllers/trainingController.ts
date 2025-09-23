@@ -825,10 +825,10 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       // Use AI service to extract slides instead of pptx2json
       console.log(`🤖 Calling AI service to extract slides from: ${filePath}`);
       const aiResponse = await axios.post(`${AI_SERVICE_URL}/upload/process`, {
-        uploadId: sourceId,
+        uploadId: file.id,
         filePath: filePath,
         mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-        title: title,
+        title: file.title,
         description: '',
         industry: 'General',
         tags: []
