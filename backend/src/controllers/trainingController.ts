@@ -6,7 +6,7 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import { S3Service } from '../services/s3Service';
-const pptx2json = require('pptx2json');
+const pptx2json = require('pptx2json').default;
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -822,10 +822,20 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     
     let pptxData;
     try {
-      const parser = new pptx2json();
-      pptxData = await parser.parse(filePath);
-      console.log(`📊 Parsed PowerPoint file with ${pptxData.slides?.length || 0} slides`);
-      console.log(`📋 First slide preview:`, pptxData.slides?.[0]);
+      // Use AI service to extract slides instead of pptx2json
+      console.log(`🤖 Calling AI service to extract slides from: ${filePath}`);
+      const aiResponse = await axios.post(`${AI_SERVICE_URL}/upload/process`, {
+        uploadId: sourceId,
+        filePath: filePath,
+        mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        title: title,
+        description: '',
+        industry: 'General',
+        tags: []
+      });
+      
+      pptxData = { slides: aiResponse.data.slides || [] };
+      console.log(`📊 AI service extracted ${pptxData.slides?.length || 0} slides`);
       
       if (!pptxData.slides || pptxData.slides.length === 0) {
         console.log('❌ No slides found in PowerPoint file, skipping content');
