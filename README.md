@@ -187,7 +187,7 @@ AWS_REGION=us-east-1
 AWS_S3_BUCKET=your-bucket-name
 DATABASE_URL=postgresql://...
 JWT_SECRET=your-secret-key
-OPENAI_API_KEY=your-openai-key
+OPENAI_API_KEY=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
 ```
 
 ## 🎯 Usage Guide

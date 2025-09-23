@@ -87,7 +87,7 @@ Update `production.env` with your values:
 DATABASE_URL=postgresql://app_user:YOUR_ACTUAL_PASSWORD@127.0.0.1:5432/presentation_generator
 
 # OpenAI (if you have an API key)
-OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+OPENAI_API_KEY=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
 
 # JWT Secret (generate a new one)
 JWT_SECRET=YOUR_SECURE_JWT_SECRET
