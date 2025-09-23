@@ -370,9 +370,8 @@ async function startTrainingProcess(trainingId: string) {
     
     // Get all uploaded files that need training
     const filesResult = await client.query(
-      `SELECT ps.*, se.id as embedding_id 
+      `SELECT DISTINCT ps.*
        FROM presentation_sources ps 
-       LEFT JOIN slide_embeddings se ON ps.id = se.source_id 
        WHERE ps.status IN ('approved', 'trained')
        ORDER BY ps.created_at ASC`
     );
