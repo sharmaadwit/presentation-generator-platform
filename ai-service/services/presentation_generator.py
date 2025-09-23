@@ -394,21 +394,28 @@ class PresentationGenerator:
         title.text = slide_data.get('title', f'Slide {slide_number}')
         
         # Apply title formatting if available
-        self._apply_text_formatting(title, slide_data.get('formatting', {}).get('title', {}))
+        formatting_data = slide_data.get('formatting', {})
+        if formatting_data and isinstance(formatting_data, dict):
+            title_formatting = formatting_data.get('title', {})
+            if title_formatting and isinstance(title_formatting, dict):
+                self._apply_text_formatting(title, title_formatting)
         
         content = slide.placeholders[1]
         content.text = slide_data.get('content', '')
         
         # Apply content formatting if available
-        self._apply_content_formatting(content, slide_data.get('formatting', {}))
+        if formatting_data and isinstance(formatting_data, dict):
+            self._apply_content_formatting(content, formatting_data)
         
         # Copy images from extracted data
         images = slide_data.get('images', [])
-        for image_data in images:
-            try:
-                self._add_extracted_image(slide, image_data)
-            except Exception as e:
-                logger.warning(f"Could not add extracted image to slide {slide_number}: {e}")
+        if images and isinstance(images, list):
+            for image_data in images:
+                try:
+                    if image_data and isinstance(image_data, dict):
+                        self._add_extracted_image(slide, image_data)
+                except Exception as e:
+                    logger.warning(f"Could not add extracted image to slide {slide_number}: {e}")
         
         # Copy exact image if available (legacy support)
         if slide_data.get('imageUrl'):
@@ -418,7 +425,9 @@ class PresentationGenerator:
                 logger.warning(f"Could not add image to slide {slide_number}: {e}")
         
         # Apply layout information if available
-        self._apply_layout_info(slide, slide_data.get('layout_info', {}))
+        layout_info = slide_data.get('layout_info', {})
+        if layout_info and isinstance(layout_info, dict):
+            self._apply_layout_info(slide, layout_info)
         
         # Add slide number
         self._add_slide_number(slide, slide_number)

@@ -245,9 +245,9 @@ async def find_similar_slides(query_embedding: list, industry: str = None, limit
             ps.title as source_title,
             ps.industry,
             COALESCE(ps.tags, ARRAY[]::text[]) as tags,
-            ss.images,
-            ss.formatting,
-            ss.layout_info
+            COALESCE(ss.images, '[]'::jsonb) as images,
+            COALESCE(ss.formatting, '{}'::jsonb) as formatting,
+            COALESCE(ss.layout_info, '{}'::jsonb) as layout_info
         FROM slide_embeddings se
         JOIN presentation_sources ps ON se.source_id = ps.id
         LEFT JOIN source_slides ss ON se.slide_id = ss.id
@@ -270,6 +270,33 @@ async def find_similar_slides(query_embedding: list, industry: str = None, limit
         # Convert to slide format expected by presentation generator
         slides = []
         for row in result:
+            # Ensure we have proper defaults for visual data
+            images_data = row.get('images') or []
+            formatting_data = row.get('formatting') or {}
+            layout_data = row.get('layout_info') or {}
+            
+            # Parse JSON data if it's a string
+            if isinstance(images_data, str):
+                try:
+                    import json
+                    images_data = json.loads(images_data)
+                except:
+                    images_data = []
+            
+            if isinstance(formatting_data, str):
+                try:
+                    import json
+                    formatting_data = json.loads(formatting_data)
+                except:
+                    formatting_data = {}
+                    
+            if isinstance(layout_data, str):
+                try:
+                    import json
+                    layout_data = json.loads(layout_data)
+                except:
+                    layout_data = {}
+            
             slides.append({
                 'id': row['id'],
                 'content': row['content'],
@@ -279,9 +306,9 @@ async def find_similar_slides(query_embedding: list, industry: str = None, limit
                 'industry': row['industry'],
                 'tags': row['tags'] or [],
                 'action': 'copy_exact',  # Use pre-trained content as-is
-                'images': row.get('images', []),
-                'formatting': row.get('formatting', {}),
-                'layout_info': row.get('layout_info', {})
+                'images': images_data,
+                'formatting': formatting_data,
+                'layout_info': layout_data
             })
         
         return slides
