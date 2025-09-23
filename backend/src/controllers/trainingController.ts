@@ -895,21 +895,23 @@ function extractSlideContent(slide: any): { content: string; type: string } {
   let content = '';
   let type = 'content';
   
-  // Extract text from slide shapes
-  if (slide.shapes) {
-    const textElements = [];
-    
-    for (const shape of slide.shapes) {
-      if (shape.text && shape.text.trim()) {
-        textElements.push(shape.text.trim());
-      }
-    }
-    
-    content = textElements.join('\n');
+  // AI service returns slides with title, content, and slide_type properties
+  if (slide.title && slide.title.trim()) {
+    content = slide.title.trim();
   }
   
-  // Determine slide type based on content
-  if (content.toLowerCase().includes('welcome') || content.toLowerCase().includes('title')) {
+  if (slide.content && slide.content.trim()) {
+    if (content) {
+      content += '\n' + slide.content.trim();
+    } else {
+      content = slide.content.trim();
+    }
+  }
+  
+  // Use the slide_type from AI service, or determine based on content
+  if (slide.slide_type) {
+    type = slide.slide_type;
+  } else if (content.toLowerCase().includes('welcome') || content.toLowerCase().includes('title')) {
     type = 'title';
   } else if (content.toLowerCase().includes('agenda') || content.toLowerCase().includes('overview')) {
     type = 'title';
