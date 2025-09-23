@@ -34,7 +34,7 @@ app.use(cors({
     'http://localhost:8000',
     process.env.FRONTEND_URL,
     process.env.AI_SERVICE_URL
-  ].filter(Boolean),
+  ].filter((url): url is string => Boolean(url)),
   credentials: true
 }));
 
