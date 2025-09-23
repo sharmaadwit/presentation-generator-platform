@@ -40,8 +40,8 @@ export class S3Service {
       console.warn('⚠️ AWS credentials not configured, using local storage');
       console.warn('💡 To enable S3 storage, set AWS_REGION and AWS_S3_BUCKET environment variables');
       
-      // Create a persistent local storage path
-      const persistentDir = '/app/persistent-storage';
+      // Create a persistent local storage path in the project directory
+      const persistentDir = path.join(process.cwd(), 'persistent-storage');
       if (!fs.existsSync(persistentDir)) {
         fs.mkdirSync(persistentDir, { recursive: true });
       }

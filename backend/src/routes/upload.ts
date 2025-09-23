@@ -43,7 +43,8 @@ const upload = multer({
       'application/pdf'
     ];
     
-    if (allowedTypes.includes(file.mimetype)) {
+    console.log("File MIME type:", file.mimetype, "Original name:", file.originalname);
+    if (allowedTypes.includes(file.mimetype) || file.originalname.toLowerCase().endsWith(".pptx") || file.originalname.toLowerCase().endsWith(".ppt") || file.originalname.toLowerCase().endsWith(".pdf")) {
       cb(null, true);
     } else {
       cb(new Error('Only PowerPoint and PDF files are allowed'));
