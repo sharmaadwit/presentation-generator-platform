@@ -439,32 +439,36 @@ async function startTrainingProcess(trainingId: string) {
         
         // Generate embeddings for each slide
         console.log(`🧠 Processing ${slides.length} slides for embeddings...`);
-        for (const slide of slides) {
-          console.log(`📝 Processing slide: ${slide.content.substring(0, 100)}...`);
+        for (let slideIndex = 0; slideIndex < slides.length; slideIndex++) {
+          const slide = slides[slideIndex];
+          console.log(`📝 Processing slide ${slideIndex + 1}/${slides.length}: ${slide.content.substring(0, 100)}...`);
           
           // Use fallback embedding generation since AI service might not be available
           const embedding = generateSimpleEmbedding(slide.content);
           console.log(`🔢 Generated embedding with ${embedding.length} dimensions`);
           
-          // First, insert the slide into source_slides table
+          // First, insert the slide into source_slides table with visual data
           const slideId = require('uuid').v4();
-          console.log(`💾 Inserting slide into source_slides table...`);
+          console.log(`💾 Inserting slide ${slideIndex + 1} with visual data into source_slides table...`);
           await client.query(
             `INSERT INTO source_slides (
               id, source_id, slide_index, title, content, 
-              slide_type, metadata
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              slide_type, metadata, images, formatting, layout_info
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
             [
               slideId,
               file.id,
-              0, // slide_index
+              slideIndex, // Correct slide index
               slide.title || `Slide from ${file.title}`,
               slide.content,
-              slide.type || 'content',
-              JSON.stringify({ training_session_id: trainingId })
+              slide.slide_type || 'content',
+              JSON.stringify({ training_session_id: trainingId }),
+              JSON.stringify(slide.images || []),
+              JSON.stringify(slide.formatting || {}),
+              JSON.stringify(slide.layout_info || {})
             ]
           );
-          console.log(`✅ Slide inserted into source_slides`);
+          console.log(`✅ Slide ${slideIndex + 1} with visual data inserted into source_slides`);
           
           // Then, store the embedding
           console.log(`💾 Inserting embedding into slide_embeddings table...`);
@@ -479,7 +483,7 @@ async function startTrainingProcess(trainingId: string) {
               slideId, // Use the slide ID we just created
               slide.content,
               JSON.stringify(embedding),
-              slide.type || 'content',
+              slide.slide_type || 'content',
               slide.relevance_score || 0.5,
               trainingId
             ]
@@ -684,7 +688,7 @@ function generateSimpleEmbedding(content: string): number[] {
   return embedding;
 }
 
-// Real PowerPoint file extraction without AI service
+// Real PowerPoint file extraction with AI service visual data extraction
 async function extractSlidesDirectly(file: any): Promise<any[]> {
   try {
     console.log(`📄 Extracting real slides from PowerPoint file: ${file.title}`);
@@ -814,15 +818,15 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       return [];
     }
     
-    // Parse PowerPoint file
+    // Parse PowerPoint file using AI service for visual data extraction
     console.log(`🔍 Attempting to parse file: ${filePath}`);
     console.log(`📁 File exists: ${fs.existsSync(filePath)}`);
     console.log(`📏 File size: ${fs.statSync(filePath).size} bytes`);
     
     let pptxData;
     try {
-      // Use AI service to extract slides instead of pptx2json
-      console.log(`🤖 Calling AI service to extract slides from: ${filePath}`);
+      // Use AI service to extract slides with visual data
+      console.log(`🤖 Calling AI service to extract slides with visual data from: ${filePath}`);
       const aiResponse = await axios.post(`${AI_SERVICE_URL}/upload/process`, {
         uploadId: file.id,
         filePath: filePath,
@@ -834,14 +838,14 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       });
       
       pptxData = { slides: aiResponse.data.slides || [] };
-      console.log(`📊 AI service extracted ${pptxData.slides?.length || 0} slides`);
+      console.log(`📊 AI service extracted ${pptxData.slides?.length || 0} slides with visual data`);
       
       if (!pptxData.slides || pptxData.slides.length === 0) {
         console.log('❌ No slides found in PowerPoint file, skipping content');
         return [];
       }
     } catch (parseError) {
-      console.error('❌ Error parsing PowerPoint file:', parseError);
+      console.error('❌ Error parsing PowerPoint file with AI service:', parseError);
       console.error('❌ Parse error details:', {
         message: parseError instanceof Error ? parseError.message : 'Unknown error',
         stack: parseError instanceof Error ? parseError.stack : undefined,
@@ -852,18 +856,22 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
     
     const slides = [];
     
-    // Extract each slide
+    // Extract each slide with visual data
     for (let i = 0; i < pptxData.slides.length; i++) {
       const slide = pptxData.slides[i];
-      const slideContent = extractSlideContent(slide);
+      const slideContent = extractSlideContentWithVisualData(slide);
       
       if (slideContent.content && slideContent.content.trim().length > 0) {
         slides.push({
           id: require('uuid').v4(),
           content: slideContent.content,
+          title: slideContent.title,
           slide_type: slideContent.type,
           source_id: file.id,
-          relevance_score: calculateRelevanceScore(slideContent.content, file.industry, file.tags)
+          relevance_score: calculateRelevanceScore(slideContent.content, file.industry, file.tags),
+          images: slideContent.images || [],
+          formatting: slideContent.formatting || {},
+          layout_info: slideContent.layout_info || {}
         });
       }
     }
@@ -873,7 +881,7 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
       return [];
     }
     
-    console.log(`✅ Extracted ${slides.length} real slides from PowerPoint file`);
+    console.log(`✅ Extracted ${slides.length} real slides with visual data from PowerPoint file`);
     return slides;
     
   } catch (error) {
@@ -889,7 +897,54 @@ async function extractSlidesDirectly(file: any): Promise<any[]> {
   }
 }
 
-// Extract content from a single slide
+// Extract content from a single slide with visual data
+function extractSlideContentWithVisualData(slide: any): { content: string; title: string; type: string; images: any[]; formatting: any; layout_info: any } {
+  let content = '';
+  let title = '';
+  let type = 'content';
+  let images = [];
+  let formatting = {};
+  let layout_info = {};
+  
+  // AI service returns slides with enhanced visual data
+  if (slide.title && slide.title.trim()) {
+    title = slide.title.trim();
+  }
+  
+  if (slide.content && slide.content.trim()) {
+    content = slide.content.trim();
+  }
+  
+  // Use the slide_type from AI service, or determine based on content
+  if (slide.slide_type) {
+    type = slide.slide_type;
+  } else if (content.toLowerCase().includes('welcome') || content.toLowerCase().includes('title')) {
+    type = 'title';
+  } else if (content.toLowerCase().includes('agenda') || content.toLowerCase().includes('overview')) {
+    type = 'title';
+  } else if (content.toLowerCase().includes('conclusion') || content.toLowerCase().includes('next steps')) {
+    type = 'conclusion';
+  } else if (content.toLowerCase().includes('chart') || content.toLowerCase().includes('graph')) {
+    type = 'chart';
+  }
+  
+  // Extract visual data from AI service response
+  if (slide.images && Array.isArray(slide.images)) {
+    images = slide.images;
+  }
+  
+  if (slide.formatting && typeof slide.formatting === 'object') {
+    formatting = slide.formatting;
+  }
+  
+  if (slide.layout_info && typeof slide.layout_info === 'object') {
+    layout_info = slide.layout_info;
+  }
+  
+  return { content, title, type, images, formatting, layout_info };
+}
+
+// Extract content from a single slide (legacy function for backward compatibility)
 function extractSlideContent(slide: any): { content: string; type: string } {
   let content = '';
   let type = 'content';
