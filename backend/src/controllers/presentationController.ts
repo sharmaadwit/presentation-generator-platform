@@ -281,7 +281,8 @@ export const presentationController = {
         
         if (slide.slide_type === 'title') {
           // Title slide
-          page.drawText(slide.title, {
+          const sanitizedTitle = slide.title.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+          page.drawText(sanitizedTitle, {
             x: 50,
             y: 600,
             size: 32,
@@ -289,7 +290,8 @@ export const presentationController = {
             color: rgb(0, 0, 0),
           });
           
-          page.drawText(slide.content, {
+          const sanitizedContent = slide.content.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+          page.drawText(sanitizedContent, {
             x: 50,
             y: 550,
             size: 16,
@@ -298,7 +300,8 @@ export const presentationController = {
           });
         } else {
           // Content slide
-          page.drawText(slide.title, {
+          const sanitizedTitle = slide.title.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+          page.drawText(sanitizedTitle, {
             x: 50,
             y: 700,
             size: 24,
@@ -312,7 +315,9 @@ export const presentationController = {
           
           bulletPoints.forEach((point: string) => {
             if (point.trim()) {
-              page.drawText(`• ${point.trim()}`, {
+              // Sanitize text to remove emojis and special characters that can't be encoded
+              const sanitizedPoint = point.trim().replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+              page.drawText(`• ${sanitizedPoint}`, {
                 x: 70,
                 y: yPos,
                 size: 14,
