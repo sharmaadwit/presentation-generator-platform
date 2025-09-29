@@ -393,7 +393,7 @@ async function handleGeneratePresentation(event) {
         let errorMessage = error.message;
         if (errorMessage.includes('No trained data') || errorMessage.includes('no trained data')) {
             errorMessage = `No trained data available. Please:
-            1. Upload and approve relevant PowerPoint presentations first
+            1. Upload and approve relevant PDF presentations first
             2. Train the system using the "Train Now" button
             3. Provide more specific requirements (industry, use case, target audience)
             4. Ensure your uploaded files contain relevant content for your topic`;
@@ -1034,7 +1034,7 @@ async function downloadFile(fileId) {
 
         // Get the filename from Content-Disposition header
         const contentDisposition = response.headers.get('Content-Disposition');
-        let downloadFileName = 'document.pptx';
+        let downloadFileName = 'document.pdf';
         
         if (contentDisposition) {
             const filenameMatch = contentDisposition.match(/filename="(.+)"/);
