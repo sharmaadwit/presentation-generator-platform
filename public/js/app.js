@@ -12,7 +12,7 @@ let analyticsData = {};
 let charts = {};
 
 // API base URL - Dynamic configuration
-const API_BASE = window.location.hostname === 'localhost' ? '/api' : `${window.location.protocol}//${window.location.hostname}:5000/api`;
+const API_BASE = window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : `${window.location.protocol}//${window.location.hostname}:5000/api`;
 const AI_SERVICE_BASE = window.location.hostname === 'localhost' ? 'http://localhost:8000' : `${window.location.protocol}//${window.location.hostname}:8000`;
 
 // Initialize app
