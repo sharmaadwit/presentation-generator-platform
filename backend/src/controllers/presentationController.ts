@@ -7,6 +7,8 @@ import axios from 'axios';
 import * as fs from 'fs';
 import * as path from 'path';
 import PptxGenJS from 'pptxgenjs';
+import puppeteer from 'puppeteer';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -253,103 +255,95 @@ export const presentationController = {
       }
 
       // Generate filename based on presentation data
-      const filename = `${presentation.customer}_${presentation.industry}_presentation.pptx`;
+      const filename = `${presentation.customer}_${presentation.industry}_presentation.pdf`;
       
-      // Create actual PowerPoint presentation using pptxgenjs
-      const pptx = new PptxGenJS();
-      
-      // Set presentation properties
-      pptx.author = 'Presentation Generator Platform';
-      pptx.company = 'AI-Powered Presentation System';
-      pptx.subject = presentation.use_case;
-      pptx.title = presentation.title;
+      // Create PDF presentation using pdf-lib
+      const pdfDoc = await PDFDocument.create();
+      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
       
       // Define color scheme based on style
       const colorScheme = getColorScheme(presentation.style);
       
       // Add slides to presentation
-      slides.forEach((slide, index) => {
-        const slideObj = pptx.addSlide();
+      for (let i = 0; i < slides.length; i++) {
+        const slide = slides[i];
+        const page = pdfDoc.addPage([612, 792]); // Letter size
         
-        // Set slide background
-        slideObj.background = { color: colorScheme.background };
+        // Set background color
+        page.drawRectangle({
+          x: 0,
+          y: 0,
+          width: 612,
+          height: 792,
+          color: rgb(1, 1, 1), // White background
+        });
         
         if (slide.slide_type === 'title') {
           // Title slide
-          slideObj.addText(slide.title, {
-            x: 1,
-            y: 2,
-            w: 8,
-            h: 1.5,
-            fontSize: 32,
-            bold: true,
-            color: colorScheme.primary,
-            align: 'center'
+          page.drawText(slide.title, {
+            x: 50,
+            y: 600,
+            size: 32,
+            font: boldFont,
+            color: rgb(0, 0, 0),
           });
           
-          slideObj.addText(slide.content, {
-            x: 1,
-            y: 3.5,
-            w: 8,
-            h: 2,
-            fontSize: 16,
-            color: colorScheme.text,
-            align: 'center'
+          page.drawText(slide.content, {
+            x: 50,
+            y: 550,
+            size: 16,
+            font: font,
+            color: rgb(0.2, 0.2, 0.2),
           });
         } else {
           // Content slide
-          slideObj.addText(slide.title, {
-            x: 0.5,
-            y: 0.5,
-            w: 9,
-            h: 0.8,
-            fontSize: 24,
-            bold: true,
-            color: colorScheme.primary
+          page.drawText(slide.title, {
+            x: 50,
+            y: 700,
+            size: 24,
+            font: boldFont,
+            color: rgb(0, 0, 0),
           });
           
           // Split content into bullet points
           const bulletPoints = slide.content.split('\n').filter((line: string) => line.trim());
-          let yPos = 1.5;
+          let yPos = 650;
           
           bulletPoints.forEach((point: string) => {
             if (point.trim()) {
-              slideObj.addText(`• ${point.trim()}`, {
-                x: 0.8,
+              page.drawText(`• ${point.trim()}`, {
+                x: 70,
                 y: yPos,
-                w: 8.4,
-                h: 0.4,
-                fontSize: 14,
-                color: colorScheme.text,
-                bullet: true
+                size: 14,
+                font: font,
+                color: rgb(0.2, 0.2, 0.2),
               });
-              yPos += 0.5;
+              yPos -= 20;
             }
           });
         }
         
         // Add slide number
-        slideObj.addText(`${index + 1}`, {
-          x: 8.5,
-          y: 6.5,
-          w: 1,
-          h: 0.5,
-          fontSize: 12,
-          color: colorScheme.secondary,
-          align: 'right'
+        page.drawText(`${i + 1}`, {
+          x: 550,
+          y: 50,
+          size: 12,
+          font: font,
+          color: rgb(0.5, 0.5, 0.5),
         });
-      });
+      }
       
-      // Generate the PowerPoint file
-      const buffer = await pptx.write({ outputType: 'nodebuffer' }) as Buffer;
+      // Generate the PDF file
+      const pdfBytes = await pdfDoc.save();
       
-      // Set headers for PowerPoint file download
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+      // Set headers for PDF file download
+      res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.setHeader('Content-Length', buffer.length);
+      res.setHeader('Content-Length', pdfBytes.length);
       
-      // Send the actual PowerPoint file
-      res.send(buffer);
+      // Send the actual PDF file
+      res.send(Buffer.from(pdfBytes));
     } catch (error) {
       throw error;
     } finally {

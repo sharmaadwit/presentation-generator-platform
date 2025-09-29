@@ -28,6 +28,8 @@
     "pg": "^8.11.3",
     "pptx2json": "^0.0.10",
     "pptxgenjs": "^4.0.1",
+    "puppeteer": "^21.5.0",
+    "pdf-lib": "^1.17.1",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

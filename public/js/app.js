@@ -43,6 +43,27 @@ function initializeApp() {
 
 function handleURLRouting() {
     const path = window.location.pathname;
+    const hash = window.location.hash;
+    
+    // Handle hash-based routing for better SPA experience
+    if (hash) {
+        const tabName = hash.substring(1); // Remove the # symbol
+        if (tabName === 'upload' || tabName === 'dashboard' || tabName === 'adminDashboard') {
+            if (!isLoggedIn) {
+                showNotification('Please login to access admin features', 'warning');
+                showTab('login');
+            } else {
+                showTab(tabName);
+            }
+        } else if (tabName === 'generate' || tabName === 'trainedDocuments' || tabName === 'login' || tabName === 'home') {
+            showTab(tabName);
+        } else if (tabName === 'logout') {
+            handleLogout();
+        } else {
+            showTab('home');
+        }
+        return;
+    }
     
     // Handle specific routes
     if (path === '/upload') {
@@ -68,6 +89,8 @@ function handleURLRouting() {
         }
     } else if (path === '/generate') {
         showTab('generate');
+    } else if (path === '/trained') {
+        showTab('trainedDocuments');
     } else if (path === '/login') {
         showTab('login');
     } else if (path === '/logout') {
@@ -254,35 +277,44 @@ function showTab(tabName) {
 
 function updateURL(tabName) {
     let newPath = '/';
+    let newHash = '';
     
     switch (tabName) {
         case 'upload':
             newPath = '/upload';
+            newHash = '#upload';
             break;
         case 'dashboard':
             newPath = '/dashboard';
+            newHash = '#dashboard';
             break;
         case 'adminDashboard':
             newPath = '/admin';
+            newHash = '#adminDashboard';
             break;
         case 'generate':
             newPath = '/generate';
+            newHash = '#generate';
             break;
         case 'trainedDocuments':
             newPath = '/trained';
+            newHash = '#trainedDocuments';
             break;
         case 'login':
             newPath = '/login';
+            newHash = '#login';
             break;
         case 'home':
         default:
             newPath = '/';
+            newHash = '#home';
             break;
     }
     
-    // Update URL without page reload
-    if (window.location.pathname !== newPath) {
-        window.history.pushState({}, '', newPath);
+    // Update URL with hash for better SPA routing
+    const newURL = newPath + newHash;
+    if (window.location.pathname + window.location.hash !== newURL) {
+        window.history.pushState({}, '', newURL);
     }
 }
 
@@ -671,7 +703,7 @@ async function downloadPresentation() {
         const contentDisposition = response.headers.get('Content-Disposition');
         const filename = contentDisposition 
             ? contentDisposition.split('filename=')[1]?.replace(/"/g, '') 
-            : `presentation-${generatedPresentationId}.pptx`;
+            : `presentation-${generatedPresentationId}.pdf`;
         
         // Create blob and download
         const blob = await response.blob();
@@ -684,7 +716,7 @@ async function downloadPresentation() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
-        showNotification('Download started!', 'success');
+        showNotification('PDF download started!', 'success');
         
     } catch (error) {
         console.error('Download error:', error);

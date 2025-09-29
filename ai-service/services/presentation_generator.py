@@ -10,6 +10,7 @@ import logging
 from PIL import Image
 import requests
 from io import BytesIO
+from .pdf_generator import PDFGenerator
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 class PresentationGenerator:
     def __init__(self):
         self.output_dir = os.getenv('PRESENTATION_OUTPUT_DIR', './generated_presentations')
+        self.pdf_generator = PDFGenerator()
         self.ensure_output_dir()
     
     def ensure_output_dir(self):
@@ -30,69 +32,24 @@ class PresentationGenerator:
         presentation_id: str,
         request_data: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Generate a PowerPoint presentation from selected slides"""
+        """Generate a PDF presentation from selected slides"""
         
         try:
-            print(f"🎨 PRESENTATION GENERATOR STARTED")
+            print(f"🎨 PDF PRESENTATION GENERATOR STARTED")
             print(f"   - Presentation ID: {presentation_id}")
             print(f"   - Total Slides: {len(slides)}")
             print(f"   - Customer: {request_data.get('customer', 'N/A')}")
             print(f"   - Industry: {request_data.get('industry', 'N/A')}")
             print(f"   - Style: {request_data.get('style', 'N/A')}")
             
-            # Create new presentation
-            prs = Presentation()
+            # Use PDF generator instead of PowerPoint
+            result = await self.pdf_generator.generate_presentation(slides, presentation_id, request_data)
             
-            # Set presentation properties
-            self._set_presentation_properties(prs, request_data)
-            print(f"✅ Presentation properties set")
-            
-            # Add title slide
-            self._add_title_slide(prs, request_data)
-            print(f"✅ Title slide added")
-            
-            # Add content slides with cost optimization
-            for i, slide_data in enumerate(slides):
-                action = slide_data.get('action', 'copy_exact')
-                print(f"📄 PROCESSING SLIDE {i+1}/{len(slides)}")
-                print(f"   - Action: {action}")
-                print(f"   - Source: {slide_data.get('source_title', 'N/A')}")
-                print(f"   - Type: {slide_data.get('slide_type', 'N/A')}")
-                
-                if action == 'copy_exact':
-                    print(f"   - 🔄 Copying exact content (0 AI tokens)")
-                    self._copy_exact_slide(prs, slide_data, i + 1)
-                elif action == 'minor_enhancement':
-                    print(f"   - ✨ Minor enhancement (~50 AI tokens)")
-                    self._add_enhanced_slide(prs, slide_data, i + 1, request_data)
-                else:  # full_generation
-                    print(f"   - 🤖 Full AI generation (~200 AI tokens)")
-                    self._add_ai_generated_slide(prs, slide_data, i + 1, request_data)
-                
-                print(f"   - ✅ Slide {i+1} completed")
-                print()
-            
-            # Add conclusion slide
-            self._add_conclusion_slide(prs, request_data)
-            
-            # Save presentation
-            filename = f"{presentation_id}_{request_data['customer'].replace(' ', '_')}.pptx"
-            filepath = os.path.join(self.output_dir, filename)
-            prs.save(filepath)
-            
-            # Generate preview images
-            preview_urls = await self._generate_preview_images(filepath, presentation_id)
-            
-            return {
-                'filepath': filepath,
-                'filename': filename,
-                'previewUrls': preview_urls,
-                'slideCount': len(slides) + 2,  # +2 for title and conclusion
-                'status': 'completed'
-            }
+            print(f"✅ PDF presentation generated successfully")
+            return result
             
         except Exception as e:
-            logger.error(f"Error generating presentation: {e}")
+            logger.error(f"Error generating PDF presentation: {e}")
             raise e
     
     def _set_presentation_properties(self, prs: Presentation, request_data: Dict[str, Any]):
