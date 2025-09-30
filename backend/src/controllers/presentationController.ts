@@ -281,7 +281,7 @@ export const presentationController = {
         
         if (slide.slide_type === 'title') {
           // Title slide
-          const sanitizedTitle = slide.title.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+          const sanitizedTitle = slide.title.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{2B50}]|[\u{1F4AF}]|[\u{1F4CA}]|[\u{1F4C8}]|[\u{1F4C9}]|[\u{1F4CB}]|[\u{1F4CC}]|[\u{1F4CD}]|[\u{1F4CE}]|[\u{1F4CF}]|[\u{1F4D0}]|[\u{1F4D1}]|[\u{1F4D2}]|[\u{1F4D3}]|[\u{1F4D4}]|[\u{1F4D5}]|[\u{1F4D6}]|[\u{1F4D7}]|[\u{1F4D8}]|[\u{1F4D9}]|[\u{1F4DA}]|[\u{1F4DB}]|[\u{1F4DC}]|[\u{1F4DD}]|[\u{1F4DE}]|[\u{1F4DF}]|[\u{1F4E0}]|[\u{1F4E1}]|[\u{1F4E2}]|[\u{1F4E3}]|[\u{1F4E4}]|[\u{1F4E5}]|[\u{1F4E6}]|[\u{1F4E7}]|[\u{1F4E8}]|[\u{1F4E9}]|[\u{1F4EA}]|[\u{1F4EB}]|[\u{1F4EC}]|[\u{1F4ED}]|[\u{1F4EE}]|[\u{1F4EF}]|[\u{1F4F0}]|[\u{1F4F1}]|[\u{1F4F2}]|[\u{1F4F3}]|[\u{1F4F4}]|[\u{1F4F5}]|[\u{1F4F6}]|[\u{1F4F7}]|[\u{1F4F8}]|[\u{1F4F9}]|[\u{1F4FA}]|[\u{1F4FB}]|[\u{1F4FC}]|[\u{1F4FD}]|[\u{1F4FE}]|[\u{1F4FF}]/gu, '');
           page.drawText(sanitizedTitle, {
             x: 50,
             y: 600,
@@ -290,7 +290,7 @@ export const presentationController = {
             color: rgb(0, 0, 0),
           });
           
-          const sanitizedContent = slide.content.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+          const sanitizedContent = slide.content.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{2B50}]|[\u{1F4AF}]|[\u{1F4CA}]|[\u{1F4C8}]|[\u{1F4C9}]|[\u{1F4CB}]|[\u{1F4CC}]|[\u{1F4CD}]|[\u{1F4CE}]|[\u{1F4CF}]|[\u{1F4D0}]|[\u{1F4D1}]|[\u{1F4D2}]|[\u{1F4D3}]|[\u{1F4D4}]|[\u{1F4D5}]|[\u{1F4D6}]|[\u{1F4D7}]|[\u{1F4D8}]|[\u{1F4D9}]|[\u{1F4DA}]|[\u{1F4DB}]|[\u{1F4DC}]|[\u{1F4DD}]|[\u{1F4DE}]|[\u{1F4DF}]|[\u{1F4E0}]|[\u{1F4E1}]|[\u{1F4E2}]|[\u{1F4E3}]|[\u{1F4E4}]|[\u{1F4E5}]|[\u{1F4E6}]|[\u{1F4E7}]|[\u{1F4E8}]|[\u{1F4E9}]|[\u{1F4EA}]|[\u{1F4EB}]|[\u{1F4EC}]|[\u{1F4ED}]|[\u{1F4EE}]|[\u{1F4EF}]|[\u{1F4F0}]|[\u{1F4F1}]|[\u{1F4F2}]|[\u{1F4F3}]|[\u{1F4F4}]|[\u{1F4F5}]|[\u{1F4F6}]|[\u{1F4F7}]|[\u{1F4F8}]|[\u{1F4F9}]|[\u{1F4FA}]|[\u{1F4FB}]|[\u{1F4FC}]|[\u{1F4FD}]|[\u{1F4FE}]|[\u{1F4FF}]/gu, '');
           page.drawText(sanitizedContent, {
             x: 50,
             y: 550,
@@ -300,7 +300,7 @@ export const presentationController = {
           });
         } else {
           // Content slide
-          const sanitizedTitle = slide.title.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+          const sanitizedTitle = slide.title.replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{2B50}]|[\u{1F4AF}]|[\u{1F4CA}]|[\u{1F4C8}]|[\u{1F4C9}]|[\u{1F4CB}]|[\u{1F4CC}]|[\u{1F4CD}]|[\u{1F4CE}]|[\u{1F4CF}]|[\u{1F4D0}]|[\u{1F4D1}]|[\u{1F4D2}]|[\u{1F4D3}]|[\u{1F4D4}]|[\u{1F4D5}]|[\u{1F4D6}]|[\u{1F4D7}]|[\u{1F4D8}]|[\u{1F4D9}]|[\u{1F4DA}]|[\u{1F4DB}]|[\u{1F4DC}]|[\u{1F4DD}]|[\u{1F4DE}]|[\u{1F4DF}]|[\u{1F4E0}]|[\u{1F4E1}]|[\u{1F4E2}]|[\u{1F4E3}]|[\u{1F4E4}]|[\u{1F4E5}]|[\u{1F4E6}]|[\u{1F4E7}]|[\u{1F4E8}]|[\u{1F4E9}]|[\u{1F4EA}]|[\u{1F4EB}]|[\u{1F4EC}]|[\u{1F4ED}]|[\u{1F4EE}]|[\u{1F4EF}]|[\u{1F4F0}]|[\u{1F4F1}]|[\u{1F4F2}]|[\u{1F4F3}]|[\u{1F4F4}]|[\u{1F4F5}]|[\u{1F4F6}]|[\u{1F4F7}]|[\u{1F4F8}]|[\u{1F4F9}]|[\u{1F4FA}]|[\u{1F4FB}]|[\u{1F4FC}]|[\u{1F4FD}]|[\u{1F4FE}]|[\u{1F4FF}]/gu, '');
           page.drawText(sanitizedTitle, {
             x: 50,
             y: 700,
@@ -316,7 +316,7 @@ export const presentationController = {
           bulletPoints.forEach((point: string) => {
             if (point.trim()) {
               // Sanitize text to remove emojis and special characters that can't be encoded
-              const sanitizedPoint = point.trim().replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu, '');
+              const sanitizedPoint = point.trim().replace(/[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{2B50}]|[\u{1F4AF}]|[\u{1F4CA}]|[\u{1F4C8}]|[\u{1F4C9}]|[\u{1F4CB}]|[\u{1F4CC}]|[\u{1F4CD}]|[\u{1F4CE}]|[\u{1F4CF}]|[\u{1F4D0}]|[\u{1F4D1}]|[\u{1F4D2}]|[\u{1F4D3}]|[\u{1F4D4}]|[\u{1F4D5}]|[\u{1F4D6}]|[\u{1F4D7}]|[\u{1F4D8}]|[\u{1F4D9}]|[\u{1F4DA}]|[\u{1F4DB}]|[\u{1F4DC}]|[\u{1F4DD}]|[\u{1F4DE}]|[\u{1F4DF}]|[\u{1F4E0}]|[\u{1F4E1}]|[\u{1F4E2}]|[\u{1F4E3}]|[\u{1F4E4}]|[\u{1F4E5}]|[\u{1F4E6}]|[\u{1F4E7}]|[\u{1F4E8}]|[\u{1F4E9}]|[\u{1F4EA}]|[\u{1F4EB}]|[\u{1F4EC}]|[\u{1F4ED}]|[\u{1F4EE}]|[\u{1F4EF}]|[\u{1F4F0}]|[\u{1F4F1}]|[\u{1F4F2}]|[\u{1F4F3}]|[\u{1F4F4}]|[\u{1F4F5}]|[\u{1F4F6}]|[\u{1F4F7}]|[\u{1F4F8}]|[\u{1F4F9}]|[\u{1F4FA}]|[\u{1F4FB}]|[\u{1F4FC}]|[\u{1F4FD}]|[\u{1F4FE}]|[\u{1F4FF}]/gu, '');
               page.drawText(`• ${sanitizedPoint}`, {
                 x: 70,
                 y: yPos,
