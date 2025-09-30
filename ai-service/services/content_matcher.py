@@ -290,25 +290,27 @@ class ContentMatcher:
         
         selected_slides = []
         
-        # Priority 1: High confidence slides (copy exact - no AI cost)
-        high_conf = categorized_slides['high_confidence']
-        for slide in high_conf[:8]:  # Take up to 8 high confidence slides
-            slide['action'] = 'copy_exact'
-            slide['cost'] = 0
-            selected_slides.append(slide)
+        # NEW APPROACH: Prioritize quality over cost for better visual presentations
         
-        # Priority 2: Medium confidence slides (minor AI enhancement - low cost)
-        medium_conf = categorized_slides['medium_confidence']
-        for slide in medium_conf[:5]:  # Take up to 5 medium confidence slides
-            slide['action'] = 'minor_enhancement'
+        # Priority 1: High confidence slides (minor enhancement for better visuals)
+        high_conf = categorized_slides['high_confidence']
+        for slide in high_conf[:6]:  # Take up to 6 high confidence slides
+            slide['action'] = 'minor_enhancement'  # Changed from copy_exact
             slide['cost'] = 'low'
             selected_slides.append(slide)
         
-        # Priority 3: Low confidence slides (only if we need more content - high cost)
+        # Priority 2: Medium confidence slides (full AI generation for rich content)
+        medium_conf = categorized_slides['medium_confidence']
+        for slide in medium_conf[:6]:  # Take up to 6 medium confidence slides
+            slide['action'] = 'full_generation'  # Changed from minor_enhancement
+            slide['cost'] = 'high'
+            selected_slides.append(slide)
+        
+        # Priority 3: Low confidence slides (full AI generation for creative content)
         low_conf = categorized_slides['low_confidence']
         remaining_slots = 15 - len(selected_slides)  # Max 15 slides total
         
-        if remaining_slots > 0 and len(selected_slides) < 10:  # Only if we need more content
+        if remaining_slots > 0:  # Always use AI generation for remaining slots
             for slide in low_conf[:remaining_slots]:
                 slide['action'] = 'full_generation'
                 slide['cost'] = 'high'
