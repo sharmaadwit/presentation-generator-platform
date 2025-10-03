@@ -339,12 +339,18 @@ async function handleGeneratePresentation(event) {
     const formData = {
         topic: document.getElementById('topic').value,
         slideCount: parseInt(document.getElementById('slideCount').value),
+        industry: document.getElementById('industry').value,
         style: document.getElementById('style').value,
         requirements: document.getElementById('requirements').value
     };
     
     if (!formData.topic.trim()) {
         showNotification('Please enter a presentation topic', 'error');
+        return;
+    }
+    
+    if (!formData.industry) {
+        showNotification('Please select an industry', 'error');
         return;
     }
     
@@ -360,8 +366,8 @@ async function handleGeneratePresentation(event) {
             },
             body: JSON.stringify({
                 useCase: formData.topic,
-                customer: 'General Customer',
-                industry: 'General',
+                customer: formData.topic,
+                industry: formData.industry,
                 targetAudience: 'General Audience',
                 presentationLength: formData.slideCount <= 5 ? 'short' : formData.slideCount <= 10 ? 'medium' : 'long',
                 style: formData.style,

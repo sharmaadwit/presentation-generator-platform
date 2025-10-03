@@ -316,10 +316,24 @@ class ContentMatcher:
                 slide['cost'] = 'high'
                 selected_slides.append(slide)
         
-        # Sort by confidence and action priority
+        # Sort by visual content priority, then confidence
+        def visual_priority(slide):
+            # Prioritize slides with visual data
+            has_images = bool(slide.get('images') and len(slide.get('images', [])) > 0)
+            has_formatting = bool(slide.get('formatting'))
+            has_layout = bool(slide.get('layout_info'))
+            
+            visual_score = 0
+            if has_images: visual_score += 3
+            if has_formatting: visual_score += 2
+            if has_layout: visual_score += 1
+            
+            return (visual_score, x['combined_score'])
+        
         selected_slides.sort(key=lambda x: (
-            x['combined_score'],  # Higher score first
-            {'copy_exact': 0, 'minor_enhancement': 1, 'full_generation': 2}[x['action']]  # Lower cost first
+            visual_priority(x)[0],  # Visual content first
+            visual_priority(x)[1],  # Then confidence score
+            {'copy_exact': 0, 'minor_enhancement': 1, 'full_generation': 2}[x['action']]  # Then cost
         ), reverse=True)
         
         return selected_slides[:15]  # Limit to 15 slides max

@@ -1,11 +1,14 @@
 from reportlab.lib.pagesizes import letter, A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Image
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Image, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.lib.colors import HexColor
+from reportlab.lib.colors import HexColor, blue, green, red, orange, purple
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
+from reportlab.graphics.shapes import Drawing, Rect, String
+from reportlab.graphics.charts.barcharts import VerticalBarChart
+from reportlab.graphics.charts.linecharts import HorizontalLineChart
 import os
 import uuid
 from typing import List, Dict, Any, Optional
@@ -257,6 +260,89 @@ class PDFGenerator:
         title = slide_data.get('title', f'Slide {slide_number}')
         story.append(Paragraph(title, styles['slide_title']))
         
+        # Add visual elements if available
+        images = slide_data.get('images', [])
+        print(f"🔍 DEBUG: Slide {slide_number} has {len(images)} visual elements")
+        if images:
+            print(f"📊 Visual elements: {images}")
+            story.append(Spacer(1, 0.1*inch))
+            
+            # Add visual section header
+            story.append(Paragraph("📊 Visual Elements", styles['slide_title']))
+            story.append(Spacer(1, 0.1*inch))
+            
+            print(f"🎯 PROCESSING {len(images)} VISUAL ELEMENTS FOR SLIDE {slide_number}")
+            
+            for img_data in images[:2]:  # Limit to 2 images per slide
+                img_title = img_data.get('title', 'Visual Element')
+                print(f"🎨 PROCESSING VISUAL ELEMENT: {img_title} (type: {img_data.get('type')})")
+                story.append(Paragraph(f"📊 {img_title}", styles['slide_title']))
+                
+                # Create actual visual representations
+                if img_data.get('type') == 'chart' and 'data' in img_data:
+                    data = img_data['data']
+                    if isinstance(data, dict):
+                        # Create a bar chart
+                        print(f"🎨 Creating chart for {img_title} with data: {data}")
+                        # Always add a text representation first
+                        data_text = f"📊 Chart Data: {', '.join([f'{k}: {v}' for k, v in data.items()])}"
+                        story.append(Paragraph(data_text, styles['content']))
+                        
+                        # Try to create chart
+                        chart = self._create_bar_chart(data, img_title)
+                        if chart:
+                            print(f"✅ Chart created successfully for {img_title}")
+                            story.append(chart)
+                            story.append(Spacer(1, 0.2*inch))  # Add space after chart
+                        else:
+                            print(f"❌ Chart creation failed for {img_title}, using table fallback")
+                            # Fallback to table if chart creation fails
+                            table_data = [['Year', 'Value']] + [[str(k), str(v)] for k, v in data.items()]
+                            table = Table(table_data)
+                            table.setStyle(TableStyle([
+                                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                                ('FONTSIZE', (0, 0), (-1, 0), 14),
+                                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                            ]))
+                            story.append(table)
+                
+                elif img_data.get('type') == 'infographic' and 'elements' in img_data:
+                    # Create a visual list with icons
+                    elements = img_data['elements']
+                    for i, element in enumerate(elements):
+                        story.append(Paragraph(f"🔹 {element}", styles['content']))
+                
+                elif img_data.get('type') == 'icon' and 'icons' in img_data:
+                    # Create a visual list with icons
+                    icons = img_data['icons']
+                    for i, icon in enumerate(icons):
+                        story.append(Paragraph(f"🏦 {icon}", styles['content']))
+                
+                elif img_data.get('type') == 'tech_stack' and 'technologies' in img_data:
+                    # Create a visual list with tech icons
+                    technologies = img_data['technologies']
+                    for i, tech in enumerate(technologies):
+                        story.append(Paragraph(f"⚙️ {tech}", styles['content']))
+                
+                elif img_data.get('type') == 'innovation' and 'stages' in img_data:
+                    # Create a visual timeline
+                    stages = img_data['stages']
+                    for i, stage in enumerate(stages):
+                        story.append(Paragraph(f"➡️ {stage}", styles['content']))
+                
+                elif 'steps' in img_data:
+                    # Create a visual process flow
+                    steps = img_data['steps']
+                    for i, step in enumerate(steps):
+                        story.append(Paragraph(f"📋 {step}", styles['content']))
+                
+                story.append(Spacer(1, 0.1*inch))
+        
         # Add content
         content = slide_data.get('content', '')
         if content:
@@ -340,6 +426,42 @@ class PDFGenerator:
             return f"{original_title} - {customer} ({industry})"
         return original_title
     
+    def _create_bar_chart(self, data: Dict[str, Any], title: str) -> Optional[Drawing]:
+        """Create a bar chart from data"""
+        try:
+            print(f"🎨 Starting chart creation for {title}")
+            # Create drawing
+            drawing = Drawing(400, 200)
+            
+            # Create bar chart
+            chart = VerticalBarChart()
+            chart.x = 50
+            chart.y = 50
+            chart.height = 150
+            chart.width = 300
+            
+            # Prepare data
+            years = list(data.keys())
+            values = list(data.values())
+            
+            print(f"📊 Chart data - Years: {years}, Values: {values}")
+            
+            chart.data = [values]
+            chart.categoryAxis.categoryNames = years
+            chart.categoryAxis.labels.fontSize = 10
+            chart.valueAxis.valueMin = 0
+            chart.valueAxis.valueMax = max(values) * 1.1
+            
+            # Add chart to drawing
+            drawing.add(chart)
+            
+            print(f"✅ Chart created successfully for {title}")
+            return drawing
+            
+        except Exception as e:
+            print(f"❌ Error creating chart for {title}: {e}")
+            return None
+
     def _generate_ai_content(self, slide_data: Dict[str, Any], request_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate AI content (high cost - only when necessary)"""
         # This would use AI to generate content, but for cost optimization

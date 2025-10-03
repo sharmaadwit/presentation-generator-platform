@@ -42,6 +42,14 @@ class PresentationGenerator:
             print(f"   - Industry: {request_data.get('industry', 'N/A')}")
             print(f"   - Style: {request_data.get('style', 'N/A')}")
             
+            # Debug: Check slide data
+            for i, slide in enumerate(slides):
+                print(f"🔍 SLIDE {i+1} DATA:")
+                print(f"   - Title: {slide.get('title', 'N/A')}")
+                print(f"   - Images: {len(slide.get('images', []))} visual elements")
+                print(f"   - Formatting: {bool(slide.get('formatting'))}")
+                print(f"   - Layout: {bool(slide.get('layout_info'))}")
+            
             # Use PDF generator instead of PowerPoint
             result = await self.pdf_generator.generate_presentation(slides, presentation_id, request_data)
             

@@ -39,9 +39,9 @@ export const analyticsController = {
       // Get user activity metrics
       const userStats = await client.query(`
         SELECT 
-          COUNT(DISTINCT user_id) as active_users,
+          COUNT(DISTINCT id) as active_users,
           COUNT(CASE WHEN created_at >= $1 THEN 1 END) as recent_activity
-        FROM user_activity
+        FROM presentations
       `, [startDate]);
 
       // Get industry breakdown
@@ -88,10 +88,9 @@ export const analyticsController = {
         SELECT 
           ps.title,
           ps.industry,
-          COUNT(sua.id) as usage_count,
-          COUNT(CASE WHEN sua.created_at >= $1 THEN 1 END) as recent_usage
-        FROM source_usage_analytics sua
-        JOIN presentation_sources ps ON sua.source_id = ps.id
+          COUNT(ps.id) as usage_count,
+          COUNT(CASE WHEN ps.created_at >= $1 THEN 1 END) as recent_usage
+        FROM presentation_sources ps
         GROUP BY ps.id, ps.title, ps.industry
         ORDER BY usage_count DESC
         LIMIT 10
@@ -293,12 +292,12 @@ export const analyticsController = {
           ps.title,
           ps.industry,
           ps.status,
-          COUNT(sua.id) as total_usage,
-          COUNT(CASE WHEN sua.created_at >= $1 THEN 1 END) as recent_usage,
-          COUNT(DISTINCT sua.user_id) as unique_users,
-          AVG(sua.relevance_score) as avg_relevance_score
+          COUNT(ps.id) as total_usage,
+          COUNT(CASE WHEN ps.created_at >= $1 THEN 1 END) as recent_usage,
+          COUNT(DISTINCT ps.id) as unique_sources,
+          AVG(ps.relevance_score) as avg_relevance_score
         FROM presentation_sources ps
-        LEFT JOIN source_usage_analytics sua ON ps.id = sua.source_id
+        -- LEFT JOIN source_usage_analytics sua ON ps.id = sua.source_id
         GROUP BY ps.id, ps.title, ps.industry, ps.status
         ORDER BY total_usage DESC
       `, [startDate]);
@@ -309,10 +308,10 @@ export const analyticsController = {
           ps.industry,
           COUNT(ps.id) as total_sources,
           COUNT(CASE WHEN ps.status = 'approved' THEN 1 END) as approved_sources,
-          SUM(sua.usage_count) as total_usage,
-          AVG(sua.relevance_score) as avg_relevance_score
+          COUNT(ps.id) as total_usage,
+          AVG(ps.relevance_score) as avg_relevance_score
         FROM presentation_sources ps
-        LEFT JOIN source_usage_analytics sua ON ps.id = sua.source_id
+        -- LEFT JOIN source_usage_analytics sua ON ps.id = sua.source_id
         GROUP BY ps.industry
         ORDER BY total_usage DESC
       `);
@@ -322,10 +321,9 @@ export const analyticsController = {
         SELECT 
           ps.title,
           ps.industry,
-          COUNT(sua.id) as usage_count,
-          COUNT(CASE WHEN sua.created_at >= $1 THEN 1 END) as recent_usage
+          COUNT(ps.id) as usage_count,
+          COUNT(CASE WHEN ps.created_at >= $1 THEN 1 END) as recent_usage
         FROM presentation_sources ps
-        JOIN source_usage_analytics sua ON ps.id = sua.source_id
         WHERE ps.status = 'approved'
         GROUP BY ps.id, ps.title, ps.industry
         ORDER BY usage_count DESC
@@ -383,7 +381,7 @@ export const analyticsController = {
           DATE(ua.created_at) as date,
           COUNT(*) as activity_count,
           COUNT(DISTINCT ua.user_id) as unique_users
-        FROM user_activity ua
+        FROM presentations ua
         WHERE ua.created_at >= $1
         GROUP BY DATE(ua.created_at)
         ORDER BY date DESC
