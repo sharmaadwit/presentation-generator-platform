@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import asyncio
 import os
+import json
 from dotenv import load_dotenv
 
 from services.presentation_generator import PresentationGenerator
@@ -229,6 +230,69 @@ def generate_simple_embedding(content: str) -> list:
     
     return embedding
 
+async def find_relevant_content(query_embedding: List[float], industry: str = None, limit: int = 10) -> List[Dict[str, Any]]:
+    """Find relevant content from training data using embeddings (replaces find_similar_slides)"""
+    try:
+        # Convert embedding to string for database query
+        embedding_str = json.dumps(query_embedding)
+        
+        # Build query with industry filter
+        if industry:
+            query = """
+                SELECT 
+                    se.id,
+                    se.content,
+                    se.slide_type,
+                    se.relevance_score,
+                    ss.title,
+                    ss.images,
+                    ss.formatting,
+                    ss.layout_info,
+                    ps.title as source_title,
+                    ps.industry
+                FROM slide_embeddings se
+                JOIN source_slides ss ON se.slide_id = ss.id
+                JOIN presentation_sources ps ON se.source_id = ps.id
+                WHERE ps.industry = $1
+                ORDER BY se.relevance_score DESC
+                LIMIT $2
+            """
+            params = [industry, limit]
+        else:
+            query = """
+                SELECT 
+                    se.id,
+                    se.content,
+                    se.slide_type,
+                    se.relevance_score,
+                    ss.title,
+                    ss.images,
+                    ss.formatting,
+                    ss.layout_info,
+                    ps.title as source_title,
+                    ps.industry
+                FROM slide_embeddings se
+                JOIN source_slides ss ON se.slide_id = ss.id
+                JOIN presentation_sources ps ON se.source_id = ps.id
+                ORDER BY se.relevance_score DESC
+                LIMIT $1
+            """
+            params = [limit]
+        
+        result = await db_manager.query(query, params)
+        
+        print(f"🔍 RELEVANT CONTENT SEARCH:")
+        print(f"   - Industry filter: {industry}")
+        print(f"   - Limit: {limit}")
+        print(f"   - Found: {len(result)} content items")
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error finding relevant content: {e}")
+        return []
+
+# COMMENTED OUT: Old matching function - replaced with content generation
 async def find_similar_slides(query_embedding: list, industry: str = None, limit: int = 20) -> list:
     """Find similar slides using vector similarity search"""
     try:
@@ -370,17 +434,28 @@ async def generate_with_embeddings(presentation_id: str, request_data: Dict[str,
         print(f"🔍 SEARCH QUERY: {search_query}")
         print(f"📊 QUERY EMBEDDING DIMENSIONS: {len(query_embedding)}")
         
+        # COMMENTED OUT: Old matching logic - replaced with content generation
         # Find similar slides using vector similarity
-        similar_slides = await find_similar_slides(
+        # similar_slides = await find_similar_slides(
+        #     query_embedding,
+        #     industry=request_data['industry'],
+        #     limit=20
+        # )
+        
+        # NEW APPROACH: Find relevant content and generate new slides
+        print(f"🔍 SEARCHING FOR RELEVANT CONTENT...")
+        
+        # Find relevant training content using embeddings
+        relevant_content = await find_relevant_content(
             query_embedding,
             industry=request_data['industry'],
-            limit=20
+            limit=10
         )
         
-        print(f"🎯 FOUND {len(similar_slides)} SIMILAR SLIDES")
+        print(f"🎯 FOUND {len(relevant_content)} RELEVANT CONTENT ITEMS")
         
-        if not similar_slides:
-            print("❌ NO SIMILAR SLIDES FOUND")
+        if not relevant_content:
+            print("❌ NO RELEVANT CONTENT FOUND")
             await db_manager.update_progress(
                 presentation_id,
                 "failed",
@@ -389,28 +464,37 @@ async def generate_with_embeddings(presentation_id: str, request_data: Dict[str,
             )
             return
         
-        # Log each slide found with details
-        for i, slide in enumerate(similar_slides):
-            print(f"📄 SLIDE {i+1}:")
-            print(f"   - ID: {slide.get('id', 'N/A')}")
-            print(f"   - Type: {slide.get('slide_type', 'N/A')}")
-            print(f"   - Relevance Score: {slide.get('relevance_score', 'N/A')}")
-            print(f"   - Source: {slide.get('source_title', 'N/A')}")
-            print(f"   - Industry: {slide.get('industry', 'N/A')}")
-            print(f"   - Action: {slide.get('action', 'N/A')}")
-            print(f"   - Content Preview: {slide.get('content', 'N/A')[:100]}...")
+        # Log each content item found with details
+        for i, content in enumerate(relevant_content):
+            print(f"📄 CONTENT {i+1}:")
+            print(f"   - ID: {content.get('id', 'N/A')}")
+            print(f"   - Type: {content.get('slide_type', 'N/A')}")
+            print(f"   - Relevance Score: {content.get('relevance_score', 'N/A')}")
+            print(f"   - Source: {content.get('source_title', 'N/A')}")
+            print(f"   - Industry: {content.get('industry', 'N/A')}")
+            print(f"   - Content Preview: {content.get('content', 'N/A')[:100]}...")
             print()
         
-        # Update progress: Matching
+        # Update progress: Content Generation
         await db_manager.update_progress(
             presentation_id,
-            "matching",
+            "generating",
             50,
-            f"Found {len(similar_slides)} relevant slides from trained knowledge base..."
+            f"Found {len(relevant_content)} relevant content items. Generating new slides..."
         )
         
-        # Use the similar slides directly (they're already processed)
-        matched_slides = similar_slides
+        # Generate new slides based on relevant content
+        from services.content_generator import ContentGenerator
+        content_generator = ContentGenerator()
+        generated_slides = await content_generator.generate_new_slides(
+            relevant_content, 
+            request_data
+        )
+        
+        print(f"✅ GENERATED {len(generated_slides)} NEW SLIDES")
+        
+        # Use the generated slides
+        matched_slides = generated_slides
         
         # Update progress: Generating
         await db_manager.update_progress(
