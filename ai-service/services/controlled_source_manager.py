@@ -320,7 +320,7 @@ class ControlledSourceManager:
         return formatting
     
     def _extract_images(self, slide) -> List[Dict[str, Any]]:
-        """Extract images from slide"""
+        """Extract images from slide including GIFs and other formats"""
         images = []
         
         try:
@@ -329,19 +329,39 @@ class ControlledSourceManager:
                     try:
                         # Get image data
                         image_blob = shape.image.blob if hasattr(shape.image, 'blob') else None
+                        
+                        # Determine image format
+                        content_type = shape.image.content_type if hasattr(shape.image, 'content_type') else 'unknown'
+                        
+                        # Check if it's a GIF
+                        is_gif = False
+                        if content_type and 'gif' in content_type.lower():
+                            is_gif = True
+                        elif image_blob and image_blob.startswith(b'GIF'):
+                            is_gif = True
+                            content_type = 'image/gif'
+                        
                         image_data = {
                             'index': i,
                             'left': shape.left,
                             'top': shape.top,
                             'width': shape.width,
                             'height': shape.height,
-                            'image_format': shape.image.content_type if hasattr(shape.image, 'content_type') else 'unknown',
-                            'image_data': base64.b64encode(image_blob).decode('utf-8') if image_blob else None
+                            'image_format': content_type,
+                            'is_gif': is_gif,
+                            'image_data': base64.b64encode(image_blob).decode('utf-8') if image_blob else None,
+                            'image_blob': image_blob  # Keep raw blob for PPTX generation
                         }
                         
                         # Try to extract image filename or identifier
                         if hasattr(shape.image, 'filename'):
                             image_data['filename'] = shape.image.filename
+                        
+                        # Log the image type
+                        if is_gif:
+                            logger.info(f"Extracted GIF image: {image_data.get('filename', f'image_{i}')}")
+                        else:
+                            logger.info(f"Extracted image: {image_data.get('filename', f'image_{i}')} ({content_type})")
                         
                         images.append(image_data)
                         

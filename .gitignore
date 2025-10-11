@@ -90,6 +90,20 @@ venv.bak/
 uploads/
 */uploads/
 
+# Generated presentations (test files)
+generated_presentations/
+*/generated_presentations/
+
+# Test files
+test-*.js
+test-*.py
+test-*.sh
+
+# Temporary files
+/tmp/
+*.tmp
+*.temp
+
 # IDE
 .vscode/
 .idea/

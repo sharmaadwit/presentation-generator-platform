@@ -81,7 +81,7 @@ class PDFGenerator:
                 
                 if action == 'copy_exact':
                     print(f"   - 🔄 Copying exact content (0 AI tokens)")
-                    self._add_content_slide(story, slide_data, i + 1, custom_styles)
+                    self._add_exact_copy_slide(story, slide_data, i + 1, custom_styles)
                 elif action == 'minor_enhancement':
                     print(f"   - ✨ Minor enhancement (~50 AI tokens)")
                     self._add_enhanced_slide(story, slide_data, i + 1, request_data, custom_styles)
@@ -254,8 +254,94 @@ class PDFGenerator:
         # Add some spacing
         story.append(Spacer(1, 0.5*inch))
     
+    def _add_exact_copy_slide(self, story: List, slide_data: Dict[str, Any], slide_number: int, styles: Dict[str, Any]):
+        """Add slide by copying exact content from training data with all visual elements"""
+        print(f"📄 EXACT COPY: Processing slide {slide_number}")
+        
+        # Add slide title with original formatting
+        title = slide_data.get('title', f'Slide {slide_number}')
+        formatting_data = slide_data.get('formatting', {})
+        
+        if formatting_data and 'title' in formatting_data:
+            # Apply original title formatting
+            formatted_title = self._create_formatted_paragraph(title, formatting_data['title'], styles)
+            story.append(formatted_title)
+        else:
+            story.append(Paragraph(title, styles['slide_title']))
+        
+        # Add visual elements exactly as they were in training data
+        images = slide_data.get('images', [])
+        print(f"📸 EXACT COPY: Slide {slide_number} has {len(images)} visual elements")
+        
+        if images:
+            story.append(Spacer(1, 0.1*inch))
+            
+            print(f"🎯 PROCESSING {len(images)} VISUAL ELEMENTS FOR EXACT COPY")
+            
+            for img_data in images:
+                img_title = img_data.get('title', 'Visual Element')
+                print(f"🎨 EXACT COPY VISUAL: {img_title} (type: {img_data.get('type')})")
+                
+                # Detect image type and handle accordingly
+                if img_data.get('image_data') or img_data.get('image_blob'):
+                    # This is a base64-encoded image from training data
+                    print(f"📸 EXACT COPY BASE64 IMAGE: {img_title}")
+                    self._add_base64_image(story, img_data, styles)
+                elif img_data.get('image_url'):
+                    # This is an external URL image from training data
+                    print(f"🌐 EXACT COPY URL IMAGE: {img_title} - {img_data.get('image_url')}")
+                    self._add_url_image(story, img_data, styles)
+                elif img_data.get('type') == 'chart' and img_data.get('data'):
+                    # This is synthetic chart data
+                    print(f"📊 EXACT COPY CHART: {img_title}")
+                    self._add_chart_visual(story, img_data, styles)
+                elif img_data.get('type') in ['infographic', 'icon', 'steps', 'tech_stack', 'innovation', 'flowchart']:
+                    # This is synthetic visual element
+                    print(f"🎨 EXACT COPY SYNTHETIC: {img_title} (type: {img_data.get('type')})")
+                    self._add_synthetic_visual(story, img_data, styles)
+                else:
+                    # Generic fallback
+                    print(f"⚠️ EXACT COPY UNKNOWN TYPE: {img_title}")
+                    story.append(Paragraph(f"📊 {img_title}", styles['slide_title']))
+                    data = img_data.get('data', {})
+                    if isinstance(data, dict):
+                        for key, value in data.items():
+                            story.append(Paragraph(f"• {key}: {value}", styles['content']))
+                    story.append(Spacer(1, 0.1*inch))
+        
+        # Add content with original formatting
+        content = slide_data.get('content', '')
+        if content:
+            # Apply formatting if available
+            formatting_data = slide_data.get('formatting', {})
+            
+            # Split content into bullet points
+            content_lines = content.split('\n')
+            for line in content_lines:
+                if line.strip():
+                    # Add bullet point with formatting
+                    bullet_text = f"• {line.strip()}"
+                    
+                    # Create paragraph with formatting
+                    if formatting_data and 'text_shape_1' in formatting_data:
+                        # Apply formatting from training data
+                        formatted_para = self._create_formatted_paragraph(bullet_text, formatting_data['text_shape_1'], styles)
+                        story.append(formatted_para)
+                    else:
+                        # Use default styling
+                        story.append(Paragraph(bullet_text, styles['content']))
+        
+        # Add source attribution
+        source = slide_data.get('sourcePresentation', '')
+        if source:
+            source_text = f"<i>Source: {source}</i>"
+            story.append(Spacer(1, 0.2*inch))
+            story.append(Paragraph(source_text, styles['content']))
+        
+        print(f"✅ EXACT COPY: Slide {slide_number} completed with {len(images)} visual elements")
+    
     def _add_content_slide(self, story: List, slide_data: Dict[str, Any], slide_number: int, styles: Dict[str, Any]):
-        """Add a content slide to presentation"""
+        """Add a content slide to presentation (legacy method)"""
         # Add slide title
         title = slide_data.get('title', f'Slide {slide_number}')
         story.append(Paragraph(title, styles['slide_title']))
@@ -276,83 +362,55 @@ class PDFGenerator:
             for img_data in images[:2]:  # Limit to 2 images per slide
                 img_title = img_data.get('title', 'Visual Element')
                 print(f"🎨 PROCESSING VISUAL ELEMENT: {img_title} (type: {img_data.get('type')})")
-                story.append(Paragraph(f"📊 {img_title}", styles['slide_title']))
                 
-                # Create actual visual representations
-                if img_data.get('type') == 'chart' and 'data' in img_data:
-                    data = img_data['data']
+                # Detect image type and handle accordingly
+                if img_data.get('image_data') or img_data.get('image_blob'):
+                    # This is a base64-encoded image from training data
+                    print(f"📸 RENDERING BASE64 IMAGE: {img_title}")
+                    self._add_base64_image(story, img_data, styles)
+                elif img_data.get('image_url'):
+                    # This is an external URL image from training data
+                    print(f"🌐 RENDERING URL IMAGE: {img_title} - {img_data.get('image_url')}")
+                    self._add_url_image(story, img_data, styles)
+                elif img_data.get('type') == 'chart' and img_data.get('data'):
+                    # This is synthetic chart data
+                    print(f"📊 RENDERING SYNTHETIC CHART: {img_title}")
+                    self._add_chart_visual(story, img_data, styles)
+                elif img_data.get('type') in ['infographic', 'icon', 'steps', 'tech_stack', 'innovation', 'flowchart']:
+                    # This is synthetic visual element
+                    print(f"🎨 RENDERING SYNTHETIC VISUAL: {img_title} (type: {img_data.get('type')})")
+                    self._add_synthetic_visual(story, img_data, styles)
+                else:
+                    # Generic fallback
+                    print(f"⚠️ UNKNOWN VISUAL TYPE: {img_title}")
+                    story.append(Paragraph(f"📊 {img_title}", styles['slide_title']))
+                    data = img_data.get('data', {})
                     if isinstance(data, dict):
-                        # Create a bar chart
-                        print(f"🎨 Creating chart for {img_title} with data: {data}")
-                        # Always add a text representation first
-                        data_text = f"📊 Chart Data: {', '.join([f'{k}: {v}' for k, v in data.items()])}"
-                        story.append(Paragraph(data_text, styles['content']))
-                        
-                        # Try to create chart
-                        chart = self._create_bar_chart(data, img_title)
-                        if chart:
-                            print(f"✅ Chart created successfully for {img_title}")
-                            story.append(chart)
-                            story.append(Spacer(1, 0.2*inch))  # Add space after chart
-                        else:
-                            print(f"❌ Chart creation failed for {img_title}, using table fallback")
-                            # Fallback to table if chart creation fails
-                            table_data = [['Year', 'Value']] + [[str(k), str(v)] for k, v in data.items()]
-                            table = Table(table_data)
-                            table.setStyle(TableStyle([
-                                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
-                                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                                ('FONTSIZE', (0, 0), (-1, 0), 14),
-                                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-                                ('GRID', (0, 0), (-1, -1), 1, colors.black)
-                            ]))
-                            story.append(table)
-                
-                elif img_data.get('type') == 'infographic' and 'elements' in img_data:
-                    # Create a visual list with icons
-                    elements = img_data['elements']
-                    for i, element in enumerate(elements):
-                        story.append(Paragraph(f"🔹 {element}", styles['content']))
-                
-                elif img_data.get('type') == 'icon' and 'icons' in img_data:
-                    # Create a visual list with icons
-                    icons = img_data['icons']
-                    for i, icon in enumerate(icons):
-                        story.append(Paragraph(f"🏦 {icon}", styles['content']))
-                
-                elif img_data.get('type') == 'tech_stack' and 'technologies' in img_data:
-                    # Create a visual list with tech icons
-                    technologies = img_data['technologies']
-                    for i, tech in enumerate(technologies):
-                        story.append(Paragraph(f"⚙️ {tech}", styles['content']))
-                
-                elif img_data.get('type') == 'innovation' and 'stages' in img_data:
-                    # Create a visual timeline
-                    stages = img_data['stages']
-                    for i, stage in enumerate(stages):
-                        story.append(Paragraph(f"➡️ {stage}", styles['content']))
-                
-                elif 'steps' in img_data:
-                    # Create a visual process flow
-                    steps = img_data['steps']
-                    for i, step in enumerate(steps):
-                        story.append(Paragraph(f"📋 {step}", styles['content']))
-                
-                story.append(Spacer(1, 0.1*inch))
+                        for key, value in data.items():
+                            story.append(Paragraph(f"• {key}: {value}", styles['content']))
+                    story.append(Spacer(1, 0.1*inch))
         
         # Add content
         content = slide_data.get('content', '')
         if content:
+            # Apply formatting if available
+            formatting_data = slide_data.get('formatting', {})
+            
             # Split content into bullet points
             content_lines = content.split('\n')
             for line in content_lines:
                 if line.strip():
-                    # Add bullet point
+                    # Add bullet point with formatting
                     bullet_text = f"• {line.strip()}"
-                    story.append(Paragraph(bullet_text, styles['content']))
+                    
+                    # Create paragraph with formatting
+                    if formatting_data and 'text_shape_1' in formatting_data:
+                        # Apply formatting from training data
+                        formatted_para = self._create_formatted_paragraph(bullet_text, formatting_data['text_shape_1'], styles)
+                        story.append(formatted_para)
+                    else:
+                        # Use default styling
+                        story.append(Paragraph(bullet_text, styles['content']))
         
         # Add source attribution if available
         source = slide_data.get('sourcePresentation', '')
@@ -461,6 +519,231 @@ class PDFGenerator:
         except Exception as e:
             print(f"❌ Error creating chart for {title}: {e}")
             return None
+    
+    def _add_base64_image(self, story: List, img_data: Dict[str, Any], styles: Dict[str, Any]):
+        """Add base64-encoded image from training data to PDF"""
+        try:
+            import base64
+            import io
+            from reportlab.lib.utils import ImageReader
+            from reportlab.platypus import Image
+            
+            print(f"📸 PROCESSING BASE64 IMAGE: {img_data.get('title', 'Visual Element')}")
+            
+            # Check if it's a GIF
+            is_gif = img_data.get('is_gif', False)
+            if is_gif:
+                print(f"🎬 Processing GIF image: {img_data.get('title', 'Visual Element')}")
+            
+            # Handle both 'image_data' (base64 string) and raw binary
+            image_data_field = img_data.get('image_data') or img_data.get('image_blob')
+            
+            if not image_data_field:
+                print(f"❌ No image data found in: {img_data}")
+                story.append(Paragraph(f"[Image: {img_data.get('title', 'Visual Element')}]", styles['content']))
+                return
+            
+            # Decode base64 image data
+            if isinstance(image_data_field, str):
+                # Already base64 encoded
+                print(f"📸 Decoding base64 string (length: {len(image_data_field)})")
+                image_bytes = base64.b64decode(image_data_field)
+            else:
+                # Raw bytes
+                print(f"📸 Using raw bytes (length: {len(image_data_field)})")
+                image_bytes = image_data_field
+            
+            # Handle GIF conversion to static image for PDF
+            if is_gif:
+                try:
+                    from PIL import Image as PILImage
+                    print(f"🎬 Converting GIF to static image for PDF")
+                    gif_buffer = io.BytesIO(image_bytes)
+                    gif_image = PILImage.open(gif_buffer)
+                    
+                    # Convert GIF to PNG (static image)
+                    png_buffer = io.BytesIO()
+                    gif_image.save(png_buffer, format='PNG')
+                    image_bytes = png_buffer.getvalue()
+                    print(f"✅ GIF converted to PNG (size: {len(image_bytes)} bytes)")
+                    
+                except Exception as e:
+                    print(f"⚠️ Failed to convert GIF, using original: {e}")
+            
+            image_buffer = io.BytesIO(image_bytes)
+            
+            # Create image reader
+            img = ImageReader(image_buffer)
+            
+            # Calculate dimensions with both width and height constraints
+            max_width = 5 * inch
+            max_height = 4 * inch
+            
+            original_width, original_height = img.getSize()
+            aspect_ratio = original_height / original_width
+            
+            # Calculate dimensions maintaining aspect ratio
+            img_width = min(max_width, original_width)
+            img_height = img_width * aspect_ratio
+            
+            # If height exceeds max, scale down
+            if img_height > max_height:
+                scale_factor = max_height / img_height
+                img_height = max_height
+                img_width = img_width * scale_factor
+            
+            print(f"📸 Image dimensions: {img.getSize()} -> {img_width}x{img_height}")
+            
+            # Add image to story
+            story.append(Image(image_buffer, width=img_width, height=img_height))
+            story.append(Spacer(1, 0.2*inch))
+            
+            print(f"✅ Successfully added {'GIF (converted)' if is_gif else 'base64'} image: {img_data.get('title', 'Visual Element')}")
+            
+        except Exception as e:
+            print(f"❌ Failed to add base64 image: {e}")
+            # Fallback to text description
+            story.append(Paragraph(f"[Image: {img_data.get('title', 'Visual Element')}]", styles['content']))
+    
+    def _add_url_image(self, story: List, img_data: Dict[str, Any], styles: Dict[str, Any]):
+        """Add external URL image from training data to PDF"""
+        try:
+            import requests
+            import io
+            from reportlab.lib.utils import ImageReader
+            from reportlab.platypus import Image
+            
+            # Download image from URL
+            image_url = img_data.get('image_url')
+            if not image_url:
+                raise ValueError("No image_url provided")
+            
+            print(f"🌐 Downloading image from: {image_url}")
+            response = requests.get(image_url, timeout=10)
+            response.raise_for_status()
+            
+            # Create image buffer
+            image_buffer = io.BytesIO(response.content)
+            
+            # Create image reader
+            img = ImageReader(image_buffer)
+            
+            # Calculate dimensions (max width 5 inches, maintain aspect ratio)
+            max_width = 5 * inch
+            aspect_ratio = img.getSize()[1] / img.getSize()[0]
+            img_width = min(max_width, img.getSize()[0])
+            img_height = img_width * aspect_ratio
+            
+            # Add image to story
+            story.append(Image(image_buffer, width=img_width, height=img_height))
+            story.append(Spacer(1, 0.2*inch))
+            
+            print(f"✅ Successfully added URL image: {img_data.get('title', 'Visual Element')}")
+            
+        except Exception as e:
+            print(f"❌ Failed to add URL image: {e}")
+            # Fallback to text description with URL
+            story.append(Paragraph(f"[Image: {img_data.get('title', 'Visual Element')}]", styles['content']))
+            if img_data.get('image_url'):
+                story.append(Paragraph(f"URL: {img_data.get('image_url')}", styles['content']))
+    
+    def _add_chart_visual(self, story: List, img_data: Dict[str, Any], styles: Dict[str, Any]):
+        """Add synthetic chart visual to PDF"""
+        try:
+            data = img_data['data']
+            if isinstance(data, dict):
+                # Create a bar chart
+                print(f"🎨 Creating chart for {img_data.get('title', 'Chart')} with data: {data}")
+                # Always add a text representation first
+                data_text = f"📊 Chart Data: {', '.join([f'{k}: {v}' for k, v in data.items()])}"
+                story.append(Paragraph(data_text, styles['content']))
+                
+                # Try to create chart
+                chart = self._create_bar_chart(data, img_data.get('title', 'Chart'))
+                if chart:
+                    print(f"✅ Chart created successfully for {img_data.get('title', 'Chart')}")
+                    story.append(chart)
+                    story.append(Spacer(1, 0.2*inch))  # Add space after chart
+                else:
+                    print(f"❌ Chart creation failed for {img_data.get('title', 'Chart')}, using table fallback")
+                    # Fallback to table if chart creation fails
+                    table_data = [['Category', 'Value']] + [[str(k), str(v)] for k, v in data.items()]
+                    table = Table(table_data)
+                    table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 14),
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                    ]))
+                    story.append(table)
+        except Exception as e:
+            print(f"❌ Failed to add chart visual: {e}")
+            story.append(Paragraph(f"[Chart: {img_data.get('title', 'Visual Element')}]", styles['content']))
+    
+    def _add_synthetic_visual(self, story: List, img_data: Dict[str, Any], styles: Dict[str, Any]):
+        """Add synthetic visual element (infographic, icon, steps) to PDF"""
+        try:
+            visual_type = img_data.get('type', 'unknown')
+            title = img_data.get('title', 'Visual Element')
+            data = img_data.get('data', {})
+            
+            if visual_type == 'infographic':
+                # Create a visual list with emoji icons
+                story.append(Paragraph(f"📊 {title}", styles['slide_title']))
+                if isinstance(data, dict):
+                    for key, value in data.items():
+                        story.append(Paragraph(f"• {key}: {value}", styles['content']))
+                story.append(Spacer(1, 0.1*inch))
+                
+            elif visual_type == 'icon':
+                # Create icon representation
+                icon = data.get('icon', '📊')
+                concept = data.get('concept', 'concept')
+                story.append(Paragraph(f"{icon} {title}", styles['slide_title']))
+                story.append(Paragraph(f"Concept: {concept}", styles['content']))
+                story.append(Spacer(1, 0.1*inch))
+                
+            elif visual_type == 'steps':
+                # Create step-by-step visual
+                story.append(Paragraph(f"📋 {title}", styles['slide_title']))
+                if isinstance(data, dict):
+                    for step, description in data.items():
+                        story.append(Paragraph(f"{step}: {description}", styles['content']))
+                story.append(Spacer(1, 0.1*inch))
+                
+            elif visual_type == 'tech_stack':
+                # Create technology stack visual
+                story.append(Paragraph(f"🔧 {title}", styles['slide_title']))
+                if isinstance(data, dict):
+                    for tech_key, tech_value in data.items():
+                        story.append(Paragraph(f"• {tech_value}", styles['content']))
+                story.append(Spacer(1, 0.1*inch))
+                
+            elif visual_type == 'innovation':
+                # Create innovation visual
+                story.append(Paragraph(f"💡 {title}", styles['slide_title']))
+                if isinstance(data, dict):
+                    for innovation_key, innovation_value in data.items():
+                        story.append(Paragraph(f"• {innovation_value}", styles['content']))
+                story.append(Spacer(1, 0.1*inch))
+                
+            else:
+                # Generic visual element
+                story.append(Paragraph(f"📊 {title}", styles['slide_title']))
+                if isinstance(data, dict):
+                    for key, value in data.items():
+                        story.append(Paragraph(f"• {key}: {value}", styles['content']))
+                story.append(Spacer(1, 0.1*inch))
+                
+            print(f"✅ Successfully added synthetic visual: {title} (type: {visual_type})")
+            
+        except Exception as e:
+            print(f"❌ Failed to add synthetic visual: {e}")
+            story.append(Paragraph(f"[Visual: {img_data.get('title', 'Visual Element')}]", styles['content']))
 
     def _generate_ai_content(self, slide_data: Dict[str, Any], request_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate AI content (high cost - only when necessary)"""
@@ -470,6 +753,65 @@ class PDFGenerator:
             'title': slide_data.get('title', ''),
             'content': slide_data.get('content', '')
         }
+    
+    def _create_formatted_paragraph(self, text: str, formatting: Dict[str, Any], styles: Dict[str, Any]) -> Paragraph:
+        """Create a paragraph with formatting from training data"""
+        try:
+            # Create a custom style based on formatting data
+            font_format = formatting.get('font', {})
+            para_format = formatting.get('paragraph', {})
+            
+            # Build style attributes
+            style_attrs = {}
+            
+            # Font attributes
+            if font_format.get('name'):
+                style_attrs['fontName'] = font_format['name']
+            if font_format.get('size'):
+                style_attrs['fontSize'] = font_format['size']
+            if font_format.get('bold'):
+                style_attrs['fontName'] = 'Helvetica-Bold'
+            if font_format.get('italic'):
+                style_attrs['fontName'] = 'Helvetica-Oblique'
+            
+            # Color handling
+            if font_format.get('color'):
+                color_str = font_format['color']
+                if 'RGBColor(' in color_str:
+                    # Extract RGB values
+                    try:
+                        rgb_values = color_str[9:-1].split(', ')
+                        if len(rgb_values) == 3:
+                            r, g, b = map(int, rgb_values)
+                            style_attrs['textColor'] = HexColor(f'#{r:02x}{g:02x}{b:02x}')
+                    except:
+                        pass
+            
+            # Paragraph alignment
+            if para_format.get('alignment'):
+                alignment_map = {
+                    'PP_ALIGN.LEFT': TA_LEFT,
+                    'PP_ALIGN.CENTER': TA_CENTER,
+                    'PP_ALIGN.RIGHT': TA_RIGHT,
+                    'PP_ALIGN.JUSTIFY': TA_LEFT  # ReportLab doesn't have justify
+                }
+                if para_format['alignment'] in alignment_map:
+                    style_attrs['alignment'] = alignment_map[para_format['alignment']]
+            
+            # Create custom style if we have formatting
+            if style_attrs:
+                custom_style = ParagraphStyle(
+                    'CustomFormatted',
+                    parent=styles['content'],
+                    **style_attrs
+                )
+                return Paragraph(text, custom_style)
+            else:
+                return Paragraph(text, styles['content'])
+                
+        except Exception as e:
+            print(f"⚠️ Error creating formatted paragraph: {e}")
+            return Paragraph(text, styles['content'])
     
     async def _generate_preview_images(self, filepath: str, presentation_id: str) -> List[str]:
         """Generate preview images for the PDF presentation"""

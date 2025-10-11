@@ -11,12 +11,14 @@
 - **Smart Fallback**: Works even when AI service is temporarily unavailable
 
 ### 🎨 **Presentation Generation**
-- **PDF Output**: Generate professional PDF presentations instead of PowerPoint
+- **Dual Format Output**: Generate both PDF and PPTX presentations
+- **GIF Support**: Process animated GIFs (converted to static in PDF, kept animated in PPTX)
+- **Visual Elements**: Preserve images, charts, diagrams, and formatting from source presentations
 - **Lightning-Fast**: Pre-trained embeddings eliminate real-time AI processing
 - **Multi-User Support**: Multiple users can generate presentations simultaneously
 - **Custom Content**: Tailored to specific industries, use cases, and audiences
 - **Professional Styling**: Support for different presentation styles (professional, creative, minimalist)
-- **Download Ready**: Generated PDF presentations ready for immediate use
+- **Download Ready**: Generated presentations ready for immediate use
 
 ### 📊 **Admin Dashboard**
 - **Training Statistics**: Total files, trained files, and embeddings count
@@ -41,10 +43,12 @@
 - **Background Processing**: Async training and generation tasks
 
 ### **AI Service (Python/FastAPI)**
-- **PDF Generation**: Creates professional PDF presentations using ReportLab
+- **Dual Format Generation**: Creates both PDF and PPTX presentations
+- **GIF Processing**: Handles animated GIFs with format-specific conversion
+- **Visual Element Preservation**: Maintains images, charts, diagrams, and formatting
 - **Embedding Generation**: Creates vector representations of content
 - **Content Matching**: Semantic search for relevant slides
-- **Presentation Assembly**: Combines slides into final PDF presentations
+- **Presentation Assembly**: Combines slides into final presentations
 - **Smart Routing**: Chooses between pre-trained and real-time generation
 - **Style Support**: Multiple presentation styles (professional, creative, minimalist)
 
@@ -53,6 +57,26 @@
 - **Content Storage**: Presentations, sources, and metadata
 - **Training Data**: Embeddings, training sessions, and progress
 - **Analytics**: Usage tracking and performance metrics
+
+## 🆕 Latest Features
+
+### **GIF Support**
+- **Extraction**: Automatically detects and extracts GIF files from PowerPoint presentations
+- **PDF Output**: Converts animated GIFs to static PNG images for PDF compatibility
+- **PPTX Output**: Preserves GIF animations in PowerPoint format
+- **Format Detection**: Smart detection by content type and file headers
+
+### **Dual Format Output**
+- **PDF Generation**: Professional PDF presentations with ReportLab
+- **PPTX Generation**: Native PowerPoint presentations with python-pptx
+- **Format Selection**: Choose output format via API parameter (`outputFormat: "pdf"` or `"pptx"`)
+- **Visual Fidelity**: All visual elements preserved in both formats
+
+### **Enhanced Visual Processing**
+- **Image Preservation**: Maintains original image quality and formatting
+- **Chart Support**: Preserves charts, diagrams, and infographics
+- **Text Formatting**: Maintains font styles, colors, and alignment
+- **Layout Preservation**: Keeps original slide layouts and positioning
 
 ## 🚀 Quick Start
 

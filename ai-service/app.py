@@ -8,9 +8,11 @@ import json
 from dotenv import load_dotenv
 
 from services.presentation_generator import PresentationGenerator
+from services.pdf_generator import PDFGenerator
+from services.pptx_generator import PPTXGenerator
 from services.web_scraper import WebScraper
 from services.slide_analyzer import SlideAnalyzer
-from services.content_matcher import ContentMatcher
+# from services.content_matcher import ContentMatcher  # COMMENTED OUT: Using content generation instead
 from services.controlled_source_manager import ControlledSourceManager
 from models.database import DatabaseManager
 
@@ -28,8 +30,12 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000", 
+        "http://localhost:3001", 
         "http://localhost:5000",
+        "http://localhost:5001",
         "http://localhost:8000",
+        "http://localhost:8001",
+        "http://localhost:8002",
         os.getenv("FRONTEND_URL", ""),
         os.getenv("BACKEND_URL", "")
     ],
@@ -42,8 +48,10 @@ app.add_middleware(
 db_manager = DatabaseManager()
 web_scraper = WebScraper()
 slide_analyzer = SlideAnalyzer()
-content_matcher = ContentMatcher()
+# content_matcher = ContentMatcher()  # COMMENTED OUT: Using content generation instead
 presentation_generator = PresentationGenerator()
+pdf_generator = PDFGenerator()
+pptx_generator = PPTXGenerator()
 controlled_source_manager = ControlledSourceManager()
 
 # Database connection startup event
@@ -78,6 +86,7 @@ class PresentationRequest(BaseModel):
     presentationLength: str = "medium"
     style: str = "professional"
     additionalRequirements: Optional[str] = None
+    outputFormat: str = "pdf"  # "pdf" or "pptx"
 
 class ScrapingRequest(BaseModel):
     query: str
@@ -286,6 +295,63 @@ async def find_relevant_content(query_embedding: List[float], industry: str = No
         print(f"   - Limit: {limit}")
         print(f"   - Found: {len(result)} content items")
         
+        # Parse JSON fields from database
+        for content in result:
+            # Parse images JSON string to Python objects
+            if content.get('images'):
+                if isinstance(content['images'], str):
+                    try:
+                        content['images'] = json.loads(content['images'])
+                        print(f"   📸 Parsed images JSON for content {content.get('id', 'unknown')}")
+                    except json.JSONDecodeError as e:
+                        print(f"   ⚠️ Failed to parse images JSON: {e}")
+                        content['images'] = []
+                elif isinstance(content['images'], list):
+                    # Already parsed
+                    pass
+            else:
+                content['images'] = []
+            
+            # Parse formatting JSON
+            if content.get('formatting'):
+                if isinstance(content['formatting'], str):
+                    try:
+                        content['formatting'] = json.loads(content['formatting'])
+                        print(f"   🎨 Parsed formatting JSON for content {content.get('id', 'unknown')}")
+                    except json.JSONDecodeError as e:
+                        print(f"   ⚠️ Failed to parse formatting JSON: {e}")
+                        content['formatting'] = {}
+                elif isinstance(content['formatting'], dict):
+                    # Already parsed
+                    pass
+            else:
+                content['formatting'] = {}
+            
+            # Parse layout_info JSON
+            if content.get('layout_info'):
+                if isinstance(content['layout_info'], str):
+                    try:
+                        content['layout_info'] = json.loads(content['layout_info'])
+                    except json.JSONDecodeError as e:
+                        print(f"   ⚠️ Failed to parse layout_info JSON: {e}")
+                        content['layout_info'] = {}
+                elif isinstance(content['layout_info'], dict):
+                    # Already parsed
+                    pass
+            else:
+                content['layout_info'] = {}
+        
+        # Log image information for each content item
+        for i, content in enumerate(result):
+            images_count = len(content.get('images', []))
+            print(f"   📸 Content {i+1}: {images_count} images available")
+            if images_count > 0:
+                for j, img in enumerate(content.get('images', [])):
+                    img_title = img.get('title', f'Image {j+1}')
+                    img_type = img.get('type', 'unknown')
+                    has_data = bool(img.get('image_data') or img.get('image_blob'))
+                    print(f"      - {img_title} (type: {img_type}, has_data: {has_data})")
+        
         return result
         
     except Exception as e:
@@ -473,6 +539,10 @@ async def generate_with_embeddings(presentation_id: str, request_data: Dict[str,
             print(f"   - Source: {content.get('source_title', 'N/A')}")
             print(f"   - Industry: {content.get('industry', 'N/A')}")
             print(f"   - Content Preview: {content.get('content', 'N/A')[:100]}...")
+            print(f"   - Images: {len(content.get('images', []))} visual elements")
+            if content.get('images'):
+                for j, img in enumerate(content['images']):
+                    print(f"      📸 Image {j+1}: {img.get('title', 'Untitled')} (type: {img.get('type', 'unknown')})")
             print()
         
         # Update progress: Content Generation
@@ -525,13 +595,22 @@ async def generate_with_embeddings(presentation_id: str, request_data: Dict[str,
         print(f"   - Minor Enhancement: {minor_enhancement_count} slides (~{minor_enhancement_count * 50} tokens)")
         print(f"   - Full Generation: {full_generation_count} slides (~{full_generation_count * 200} tokens)")
         
-        # Generate final presentation
-        print(f"🚀 GENERATING PRESENTATION...")
-        presentation_data = await presentation_generator.generate_presentation(
-            slides=matched_slides,
-            presentation_id=presentation_id,
-            request_data=request_data
-        )
+        # Generate final presentation based on output format
+        output_format = request_data.get('outputFormat', 'pdf').lower()
+        print(f"🚀 GENERATING PRESENTATION IN {output_format.upper()} FORMAT...")
+        
+        if output_format == 'pptx':
+            presentation_data = await pptx_generator.generate_presentation(
+                slides=matched_slides,
+                presentation_id=presentation_id,
+                request_data=request_data
+            )
+        else:  # Default to PDF
+            presentation_data = await pdf_generator.generate_presentation(
+                slides=matched_slides,
+                presentation_id=presentation_id,
+                request_data=request_data
+            )
         
         # Update progress: Finalizing
         await db_manager.update_progress(
@@ -629,15 +708,18 @@ async def generate_without_embeddings(presentation_id: str, request_data: Dict[s
             f"Analyzing {len(all_slides)} slides from approved knowledge base..."
         )
         
-        # Step 3: Analyze and match slides
-        matched_slides = await content_matcher.match_slides(
-            slides=all_slides,
-            use_case=request_data['useCase'],
-            customer=request_data['customer'],
-            industry=request_data['industry'],
-            target_audience=request_data.get('targetAudience'),
-            style=request_data['style']
-        )
+        # Step 3: Analyze and match slides (DISABLED - using content generation instead)
+        # matched_slides = await content_matcher.match_slides(
+        #     slides=all_slides,
+        #     use_case=request_data['useCase'],
+        #     customer=request_data['customer'],
+        #     industry=request_data['industry'],
+        #     target_audience=request_data.get('targetAudience'),
+        #     style=request_data['style']
+        # )
+        
+        # Fallback: Use slides as-is for now
+        matched_slides = all_slides[:5]  # Limit to 5 slides
         
         # Update progress: Generating
         await db_manager.update_progress(
@@ -647,12 +729,22 @@ async def generate_without_embeddings(presentation_id: str, request_data: Dict[s
             f"Generating presentation with {len(matched_slides)} selected slides..."
         )
         
-        # Step 4: Generate final presentation
-        presentation_data = await presentation_generator.generate_presentation(
-            slides=matched_slides,
-            presentation_id=presentation_id,
-            request_data=request_data
-        )
+        # Step 4: Generate final presentation based on output format
+        output_format = request_data.get('outputFormat', 'pdf').lower()
+        print(f"🚀 GENERATING PRESENTATION IN {output_format.upper()} FORMAT...")
+        
+        if output_format == 'pptx':
+            presentation_data = await pptx_generator.generate_presentation(
+                slides=matched_slides,
+                presentation_id=presentation_id,
+                request_data=request_data
+            )
+        else:  # Default to PDF
+            presentation_data = await pdf_generator.generate_presentation(
+                slides=matched_slides,
+                presentation_id=presentation_id,
+                request_data=request_data
+            )
         
         # Update progress: Finalizing
         await db_manager.update_progress(
@@ -690,4 +782,7 @@ async def generate_without_embeddings(presentation_id: str, request_data: Dict[s
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.getenv("PORT", 8000))
+    print(f"🔧 PORT ENVIRONMENT VARIABLE: {os.getenv('PORT', 'NOT SET')}")
+    print(f"🔧 USING PORT: {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)
