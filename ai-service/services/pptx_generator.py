@@ -207,15 +207,44 @@ class PPTXGenerator:
             with open(temp_filename, 'wb') as f:
                 f.write(image_bytes)
             
-            # Calculate position (arrange images in a grid)
-            images_per_row = 2
-            row = index // images_per_row
-            col = index % images_per_row
+            # Get original image dimensions and position from source data
+            original_left = img_data.get('left', 0)
+            original_top = img_data.get('top', 0)
+            original_width = img_data.get('width', 0)
+            original_height = img_data.get('height', 0)
             
-            left = Inches(0.5 + col * 4.5)
-            top = Inches(2 + row * 2.5)
-            width = Inches(4)
-            height = Inches(2)
+            # Convert EMU to Inches (1 inch = 914400 EMU)
+            if original_left > 0 and original_top > 0 and original_width > 0 and original_height > 0:
+                # Use original positioning and dimensions
+                left = Inches(original_left / 914400)
+                top = Inches(original_top / 914400)
+                width = Inches(original_width / 914400)
+                height = Inches(original_height / 914400)
+                
+                # Ensure image fits within slide boundaries
+                # Use standard slide dimensions (10x7.5 inches)
+                slide_width = Inches(10)
+                slide_height = Inches(7.5)
+                
+                # If image is too large, scale it down proportionally
+                if width > slide_width or height > slide_height:
+                    scale_factor = min(slide_width / width, slide_height / height)
+                    width = width * scale_factor
+                    height = height * scale_factor
+                
+                print(f"📸 Using original positioning: left={left:.2f}, top={top:.2f}, size={width:.2f}x{height:.2f}")
+            else:
+                # Fallback to grid layout
+                images_per_row = 2
+                row = index // images_per_row
+                col = index % images_per_row
+                
+                left = Inches(0.5 + col * 4.5)
+                top = Inches(2 + row * 2.5)
+                width = Inches(4)
+                height = Inches(2.5)
+                
+                print(f"📸 Using grid layout: left={left:.2f}, top={top:.2f}, size={width:.2f}x{height:.2f}")
             
             # Add image to slide
             slide.shapes.add_picture(temp_filename, left, top, width, height)

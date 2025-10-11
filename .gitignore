@@ -90,6 +90,10 @@ venv.bak/
 uploads/
 */uploads/
 
+# Persistent storage
+backend/persistent-storage/
+*/persistent-storage/
+
 # Generated presentations (test files)
 generated_presentations/
 */generated_presentations/

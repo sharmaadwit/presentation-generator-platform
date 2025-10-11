@@ -575,7 +575,7 @@ class PDFGenerator:
             # Create image reader
             img = ImageReader(image_buffer)
             
-            # Calculate dimensions with both width and height constraints
+            # Calculate dimensions preserving original aspect ratio
             max_width = 5 * inch
             max_height = 4 * inch
             
@@ -586,13 +586,19 @@ class PDFGenerator:
             img_width = min(max_width, original_width)
             img_height = img_width * aspect_ratio
             
-            # If height exceeds max, scale down
+            # If height exceeds max, scale down proportionally
             if img_height > max_height:
                 scale_factor = max_height / img_height
                 img_height = max_height
                 img_width = img_width * scale_factor
             
-            print(f"📸 Image dimensions: {img.getSize()} -> {img_width}x{img_height}")
+            # Ensure we don't exceed max width after height adjustment
+            if img_width > max_width:
+                scale_factor = max_width / img_width
+                img_width = max_width
+                img_height = img_height * scale_factor
+            
+            print(f"📸 Image dimensions: {img.getSize()} -> {img_width:.1f}x{img_height:.1f} (aspect ratio preserved)")
             
             # Add image to story
             story.append(Image(image_buffer, width=img_width, height=img_height))
