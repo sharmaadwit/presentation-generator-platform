@@ -479,7 +479,7 @@ class ControlledSourceManager:
                         updated_at = CURRENT_TIMESTAMP
                 """, 
                 source_id, title, description, industry, tags, 
-                file_path, 'uploaded', 'approved', 'system',
+                file_path, 'uploaded', 'approved', None,
                 json.dumps({'mime_type': mime_type})
                 )
                 
