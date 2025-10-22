@@ -349,8 +349,9 @@ class ControlledSourceManager:
                             'height': shape.height,
                             'image_format': content_type,
                             'is_gif': is_gif,
-                            'image_data': base64.b64encode(image_blob).decode('utf-8') if image_blob else None,
-                            'image_blob': image_blob  # Keep raw blob for PPTX generation
+                            'image_data': base64.b64encode(image_blob).decode('utf-8') if image_blob else None
+                            # Note: Removed image_blob to avoid JSON serialization issues
+                            # Raw blob data is not needed for database storage
                         }
                         
                         # Try to extract image filename or identifier
