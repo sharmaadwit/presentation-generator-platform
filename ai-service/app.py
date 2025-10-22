@@ -170,6 +170,17 @@ async def process_uploaded_file(request: dict):
         # Extract slides from uploaded file
         slides = await controlled_source_manager.extract_slides_from_source(upload_id, file_path, industry)
         
+        # Store the source information in presentation_sources table
+        await controlled_source_manager.store_presentation_source(
+            source_id=upload_id,
+            title=title,
+            description=description,
+            industry=industry,
+            tags=tags,
+            file_path=file_path,
+            mime_type=mime_type
+        )
+        
         return {
             "message": "File processed successfully",
             "slides": slides,

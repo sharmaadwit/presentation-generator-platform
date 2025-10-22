@@ -174,6 +174,24 @@ function setupEventListeners() {
         });
     }
     
+    // Upload form buttons
+    const uploadFilesBtn = document.getElementById('uploadFilesBtn');
+    if (uploadFilesBtn) {
+        uploadFilesBtn.addEventListener('click', () => {
+            const files = Array.from(document.getElementById('fileInput').files);
+            if (files.length > 0) {
+                uploadFiles(files);
+            }
+        });
+    }
+    
+    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+    if (cancelUploadBtn) {
+        cancelUploadBtn.addEventListener('click', () => {
+            resetUploadForm();
+        });
+    }
+    
     // Mobile menu button
     const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     if (mobileMenuBtn) {
@@ -419,7 +437,33 @@ async function handleGeneratePresentation(event) {
 // File upload functionality
 function handleFileUpload(event) {
     const files = Array.from(event.target.files);
-    uploadFiles(files);
+    if (files.length > 0) {
+        showUploadFormFields();
+    }
+}
+
+function showUploadFormFields() {
+    const formFields = document.getElementById('uploadFormFields');
+    if (formFields) {
+        formFields.classList.remove('hidden');
+    }
+}
+
+function resetUploadForm() {
+    // Reset form fields
+    document.getElementById('uploadIndustry').value = '';
+    document.getElementById('uploadTitle').value = '';
+    document.getElementById('uploadDescription').value = '';
+    document.getElementById('uploadTags').value = '';
+    
+    // Reset file input
+    document.getElementById('fileInput').value = '';
+    
+    // Hide form fields
+    const formFields = document.getElementById('uploadFormFields');
+    if (formFields) {
+        formFields.classList.add('hidden');
+    }
 }
 
 function handleDragOver(event) {
@@ -432,7 +476,14 @@ function handleDrop(event) {
     event.currentTarget.classList.remove('border-blue-500', 'bg-blue-50');
     
     const files = Array.from(event.dataTransfer.files);
-    uploadFiles(files);
+    if (files.length > 0) {
+        // Set files to input
+        const fileInput = document.getElementById('fileInput');
+        fileInput.files = event.dataTransfer.files;
+        
+        // Show form fields
+        showUploadFormFields();
+    }
 }
 
 async function uploadFiles(files) {
@@ -443,10 +494,28 @@ async function uploadFiles(files) {
         return;
     }
     
+    // Get form data
+    const industry = document.getElementById('uploadIndustry').value;
+    const title = document.getElementById('uploadTitle').value;
+    const description = document.getElementById('uploadDescription').value;
+    const tags = document.getElementById('uploadTags').value;
+    
+    // Validate required fields
+    if (!industry) {
+        showNotification('Please select an industry', 'warning');
+        return;
+    }
+    
     const formData = new FormData();
     files.forEach(file => {
         formData.append('files', file);
     });
+    
+    // Add metadata
+    formData.append('industry', industry);
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('tags', tags);
     
     try {
         showUploadProgress();
@@ -473,8 +542,13 @@ async function uploadFiles(files) {
             name: file.name,
             size: file.size,
             type: file.type,
-            uploadedAt: new Date().toISOString()
+            uploadedAt: new Date().toISOString(),
+            industry: industry,
+            title: title
         })));
+        
+        // Reset form
+        resetUploadForm();
         
         // Refresh sources list
         loadSources();

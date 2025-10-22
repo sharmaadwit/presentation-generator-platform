@@ -450,6 +450,44 @@ class ControlledSourceManager:
             logger.error(f"Error storing slides: {e}")
             raise e
     
+    async def store_presentation_source(
+        self, 
+        source_id: str, 
+        title: str, 
+        description: str, 
+        industry: str, 
+        tags: list, 
+        file_path: str, 
+        mime_type: str
+    ):
+        """Store presentation source information in the database"""
+        try:
+            async with self.connection_pool.acquire() as conn:
+                await conn.execute("""
+                    INSERT INTO presentation_sources (
+                        id, title, description, industry, tags, 
+                        file_path, mime_type, source_type, status, 
+                        uploaded_by, created_at, updated_at
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ON CONFLICT (id) DO UPDATE SET
+                        title = EXCLUDED.title,
+                        description = EXCLUDED.description,
+                        industry = EXCLUDED.industry,
+                        tags = EXCLUDED.tags,
+                        file_path = EXCLUDED.file_path,
+                        mime_type = EXCLUDED.mime_type,
+                        updated_at = CURRENT_TIMESTAMP
+                """, 
+                source_id, title, description, industry, tags, 
+                file_path, mime_type, 'uploaded', 'approved', 'system'
+                )
+                
+                logger.info(f"Stored presentation source: {source_id} for industry: {industry}")
+                
+        except Exception as e:
+            logger.error(f"Error storing presentation source: {e}")
+            raise e
+
     async def search_slides_by_criteria(
         self, 
         industry: str, 

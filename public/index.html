@@ -216,9 +216,53 @@
                         <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
                         <p class="text-gray-600 mb-4">Drag and drop your presentation files here, or click to browse</p>
                         <input type="file" id="fileInput" multiple accept=".pptx,.ppt,.pdf" class="hidden">
-                                                    <button id="chooseFilesBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-                                Choose Files
+                        <button id="chooseFilesBtn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            Choose Files
+                        </button>
+                    </div>
+                    
+                    <!-- Upload Form Fields -->
+                    <div id="uploadFormFields" class="mt-6 space-y-4 hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Industry *</label>
+                            <select id="uploadIndustry" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                                <option value="">Select Industry</option>
+                                <option value="Banking">Banking</option>
+                                <option value="Technology">Technology</option>
+                                <option value="Healthcare">Healthcare</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Retail">Retail</option>
+                                <option value="Education">Education</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="General">General</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                            <input type="text" id="uploadTitle" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter presentation title...">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                            <textarea id="uploadDescription" rows="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter presentation description..."></textarea>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Tags (comma-separated)</label>
+                            <input type="text" id="uploadTags" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="e.g., banking, finance, customer-service">
+                        </div>
+                        
+                        <div class="flex space-x-4">
+                            <button id="uploadFilesBtn" class="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-green-700 transition-colors">
+                                <i class="fas fa-upload mr-2"></i>
+                                Upload Files
                             </button>
+                            <button id="cancelUploadBtn" class="flex-1 bg-gray-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-gray-700 transition-colors">
+                                <i class="fas fa-times mr-2"></i>
+                                Cancel
+                            </button>
+                        </div>
                     </div>
                     
                     <div id="uploadProgress" class="mt-4 hidden">
