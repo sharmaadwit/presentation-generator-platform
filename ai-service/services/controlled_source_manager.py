@@ -466,20 +466,21 @@ class ControlledSourceManager:
                 await conn.execute("""
                     INSERT INTO presentation_sources (
                         id, title, description, industry, tags, 
-                        file_path, mime_type, source_type, status, 
-                        uploaded_by, created_at, updated_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                        file_path, source_type, status, 
+                        uploaded_by, created_at, updated_at, metadata
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $10)
                     ON CONFLICT (id) DO UPDATE SET
                         title = EXCLUDED.title,
                         description = EXCLUDED.description,
                         industry = EXCLUDED.industry,
                         tags = EXCLUDED.tags,
                         file_path = EXCLUDED.file_path,
-                        mime_type = EXCLUDED.mime_type,
+                        metadata = EXCLUDED.metadata,
                         updated_at = CURRENT_TIMESTAMP
                 """, 
                 source_id, title, description, industry, tags, 
-                file_path, mime_type, 'uploaded', 'approved', 'system'
+                file_path, 'uploaded', 'approved', 'system',
+                json.dumps({'mime_type': mime_type})
                 )
                 
                 logger.info(f"Stored presentation source: {source_id} for industry: {industry}")
