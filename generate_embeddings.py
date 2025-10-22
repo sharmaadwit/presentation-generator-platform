@@ -18,13 +18,14 @@ async def generate_embeddings_for_all_slides():
         conn = await asyncpg.connect(database_url)
         print("✅ Connected to database")
         
-        # Get all slides
-        slides = await conn.fetch("""
-            SELECT id, title, content, slide_type 
-            FROM source_slides 
-            WHERE content IS NOT NULL AND content != ''
-            ORDER BY id
-        """)
+            # Get all slides with industry information
+            slides = await conn.fetch("""
+                SELECT ss.id, ss.title, ss.content, ss.slide_type, ps.industry
+                FROM source_slides ss
+                LEFT JOIN presentation_sources ps ON ss.source_id = ps.id
+                WHERE ss.content IS NOT NULL AND ss.content != ''
+                ORDER BY ss.id
+            """)
         
         print(f"📊 Found {len(slides)} slides to process")
         
@@ -51,14 +52,15 @@ async def generate_embeddings_for_all_slides():
                     embedding_data = response.json()
                     embedding = embedding_data['embedding']
                     
-                    # Store in database
-                    await conn.execute("""
-                        INSERT INTO slide_embeddings (slide_id, content, embedding)
-                        VALUES ($1, $2, $3)
-                        ON CONFLICT (slide_id) DO UPDATE SET
-                        content = EXCLUDED.content,
-                        embedding = EXCLUDED.embedding
-                    """, slide['id'], content, json.dumps(embedding))
+                        # Store in database with industry information
+                        await conn.execute("""
+                            INSERT INTO slide_embeddings (slide_id, content, embedding, industry)
+                            VALUES ($1, $2, $3, $4)
+                            ON CONFLICT (slide_id) DO UPDATE SET
+                            content = EXCLUDED.content,
+                            embedding = EXCLUDED.embedding,
+                            industry = EXCLUDED.industry
+                        """, slide['id'], content, json.dumps(embedding), slide.get('industry', 'General'))
                     
                     processed += 1
                     print(f"✅ Processed slide {processed}/{len(slides)}: {slide['title'][:50]}...")

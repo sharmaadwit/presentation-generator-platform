@@ -148,7 +148,7 @@ class ControlledSourceManager:
             logger.error(f"Error getting source slides: {e}")
             return []
     
-    async def extract_slides_from_source(self, source_id: str, file_path: str) -> List[Dict[str, Any]]:
+    async def extract_slides_from_source(self, source_id: str, file_path: str, industry: str = None) -> List[Dict[str, Any]]:
         """Extract slides from a presentation file and store them in the database"""
         temp_file = None
         try:
@@ -171,10 +171,10 @@ class ControlledSourceManager:
                 slide_data['source_id'] = source_id
                 slides.append(slide_data)
             
-            # Store slides in database
-            await self._store_slides(slides)
+            # Store slides in database with industry information
+            await self._store_slides(slides, industry)
             
-            logger.info(f"Extracted {len(slides)} slides from source {source_id}")
+            logger.info(f"Extracted {len(slides)} slides from source {source_id} for industry {industry}")
             return slides
             
         except Exception as e:
@@ -422,7 +422,7 @@ class ControlledSourceManager:
         else:
             return 'content'
     
-    async def _store_slides(self, slides: List[Dict[str, Any]]):
+    async def _store_slides(self, slides: List[Dict[str, Any]], industry: str = None):
         """Store extracted slides in the database with enhanced visual data"""
         try:
             async with self.connection_pool.acquire() as conn:
@@ -431,8 +431,8 @@ class ControlledSourceManager:
                         INSERT INTO source_slides (
                             source_id, slide_index, title, content, 
                             image_url, slide_type, metadata, 
-                            images, formatting, layout_info
-                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                            images, formatting, layout_info, industry
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
                     """, 
                     slide['source_id'],
                     slide['slide_index'],
@@ -443,7 +443,8 @@ class ControlledSourceManager:
                     json.dumps(slide['metadata']),
                     json.dumps(slide.get('images', [])),
                     json.dumps(slide.get('formatting', {})),
-                    json.dumps(slide.get('layout_info', {}))
+                    json.dumps(slide.get('layout_info', {})),
+                    industry
                     )
         except Exception as e:
             logger.error(f"Error storing slides: {e}")
